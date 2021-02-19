@@ -4,8 +4,7 @@ set -ue
 
 THIS_DIR="$(cd "$(dirname "$0")"; pwd -P)"
 
-mkdir -p $1
-DATA_DIR="$(cd $1; pwd)"
+DATA_DIR=$THIS_DIR/tmp
 echo "Data will be stored in $DATA_DIR"
 rm -rf $DATA_DIR/*
 mkdir -p $DATA_DIR/{config,logs}
@@ -60,5 +59,33 @@ EOF
 kafka-server-start.sh $DATA_DIR/config/server.properties >$DATA_DIR/logs/kafka &
 wait_for_port "kafka" 9092
 
-echo "Creating topic"
-kafka-topics.sh --create --topic quickstart-events --bootstrap-server localhost:9092
+echo "Creating topics"
+kafka-topics.sh --create \
+    --bootstrap-server localhost:9092 \
+    --replication-factor 1 \
+    --partitions 1 \
+    --topic streams-plaintext-input
+kafka-topics.sh --create \
+    --bootstrap-server localhost:9092 \
+    --replication-factor 1 \
+    --partitions 1 \
+    --topic streams-wordcount-output
+
+echo "Compiling"
+mvn package
+
+echo "Running streams (check $DATA_DIR/logs/streams)"
+java -cp target/word-count-1.0-SNAPSHOT-jar-with-dependencies.jar net.scattered_thoughts.streaming_consistency.WordCountApp >$DATA_DIR/logs/streams &
+
+echo "Feeding input"
+echo -e "all streams lead to kafka\nhello kafka streams\njoin kafka summit" | kafka-console-producer.sh --broker-list localhost:9092 --topic streams-plaintext-input
+
+echo "Reading output"
+kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+    --topic streams-wordcount-output \
+    --from-beginning \
+    --formatter kafka.tools.DefaultMessageFormatter \
+    --property print.key=true \
+    --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
+    --property value.deserializer=org.apache.kafka.common.serialization.LongDeserializer
+

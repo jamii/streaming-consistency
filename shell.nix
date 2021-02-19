@@ -19,5 +19,7 @@ in
 pkgs.mkShell {
     buildInputs = [
         apacheKafka
+        pkgs.maven
+        pkgs.jre8
     ];
 }
