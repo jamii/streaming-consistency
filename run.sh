@@ -64,28 +64,53 @@ kafka-topics.sh --create \
     --bootstrap-server localhost:9092 \
     --replication-factor 1 \
     --partitions 1 \
-    --topic streams-plaintext-input
+    --topic streams-pageview-input
 kafka-topics.sh --create \
     --bootstrap-server localhost:9092 \
     --replication-factor 1 \
     --partitions 1 \
-    --topic streams-wordcount-output
+    --topic streams-userprofile-input
+kafka-topics.sh --create \
+    --bootstrap-server localhost:9092 \
+    --replication-factor 1 \
+    --partitions 1 \
+    --topic streams-pageviewstats-untyped-output
 
 echo "Compiling"
 mvn package
 
 echo "Running streams (check $DATA_DIR/logs/streams)"
-java -cp target/word-count-1.0-SNAPSHOT-jar-with-dependencies.jar net.scattered_thoughts.streaming_consistency.WordCountApp >$DATA_DIR/logs/streams &
+java -cp target/demo-1.0-SNAPSHOT-jar-with-dependencies.jar net.scattered_thoughts.streaming_consistency.PageViewUntypedDemo >$DATA_DIR/logs/streams &
+
+produce_pageview() {
+    echo -e "$1" | kafka-console-producer.sh --broker-list localhost:9092 --topic streams-pageview-input --property "key.separator=:" --property "parse.key=true" 
+}
+
+produce_user() {
+    echo -e "$1" | kafka-console-producer.sh --broker-list localhost:9092 --topic streams-user-input --property "key.separator=:" --property "parse.key=true" 
+}
 
 echo "Feeding input"
-echo -e "all streams lead to kafka\nhello kafka streams\njoin kafka summit" | kafka-console-producer.sh --broker-list localhost:9092 --topic streams-plaintext-input
+produce_user 'alice:{"region": "narnia", "timestamp": 0}'
+produce_user 'alice:{"region": "narnia", "timestamp": 0}'
+produce_user '"bob":{"region": "narnia2", "timestamp": 2000}'
+produce_user 'eve:{"region": "narnia", "timestamp": 6000}'
+produce_user 'foo:{"region": "narnia", "timestamp": 1000}'
+produce_user 'gar:{"region": "narnia", "timestamp": 1000}'
+produce_user '"hob":{"region": "narnia2", "timestamp": 2000}'
+produce_pageview '"hob":{"user": "hob", "page": "foo", "timestamp": 3000}'
+produce_pageview 'alice:{"user": "alice", "page": "foo", "timestamp": 1}'
+produce_pageview '"alice":{"user": "alice", "page": "foo", "timestamp": 1000}'
+produce_pageview '"bob":{"user": "bob", "page": "foo", "timestamp": 3000}'
+produce_pageview 'eve:{"user": "eve", "page": "foo", "timestamp": 5000}'
+produce_pageview 'foo:{"user": "foo", "page": "foo", "timestamp": 0}'
+produce_pageview 'gar:{"user": "gar", "page": "foo", "timestamp": 0}'
 
 echo "Reading output"
 kafka-console-consumer.sh --bootstrap-server localhost:9092 \
-    --topic streams-wordcount-output \
+    --topic streams-pageviewstats-untyped-output \
     --from-beginning \
     --formatter kafka.tools.DefaultMessageFormatter \
     --property print.key=true \
     --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
-    --property value.deserializer=org.apache.kafka.common.serialization.LongDeserializer
-
+    --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer

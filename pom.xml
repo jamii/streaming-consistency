@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.scattered_thoughts.streaming_consistency</groupId>
-    <artifactId>word-count</artifactId>
+    <artifactId>demo</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <dependencies>
@@ -58,7 +58,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>net.scattered_thoughts.streaming-consistency.WordCountApp</mainClass>
+                            <mainClass>net.scattered_thoughts.streaming_consistency.PageViewUntypedDemo</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
