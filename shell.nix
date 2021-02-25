@@ -21,5 +21,7 @@ pkgs.mkShell {
         apacheKafka
         pkgs.maven
         pkgs.jre8
+        
+        pkgs.which
     ];
 }

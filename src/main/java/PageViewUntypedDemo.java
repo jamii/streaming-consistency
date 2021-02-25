@@ -72,18 +72,20 @@ public class PageViewUntypedDemo {
         final Serde<JsonNode> jsonSerde = Serdes.serdeFrom(jsonSerializer, jsonDeserializer);
 
         final Consumed<String, JsonNode> consumed = Consumed.with(Serdes.String(), jsonSerde);
-        final KTable<String, JsonNode> views = builder.table("streams-pageview-input", consumed);
+        final KStream<String, JsonNode> views = builder.stream("streams-pageview-input", consumed);
+
         final KTable<String, JsonNode> users = builder.table("streams-userprofile-input", consumed);
 
+        final KTable<String, String> userRegions = users.mapValues(record -> record.get("region").textValue());
+
         final KStream<JsonNode, JsonNode> regionCount = views
-            .leftJoin(users, (view, user) -> {
+            .leftJoin(userRegions, (view, region) -> {
                 final ObjectNode jNode = JsonNodeFactory.instance.objectNode();
                 return (JsonNode) jNode.put("user", view.get("user").textValue())
                         .put("page", view.get("page").textValue())
-                        .put("region", user == null ? "UNKNOWN" : user.get("region").textValue());
+                        .put("region", region == null ? "UNKNOWN" : region);
 
             })
-            .toStream()
             .map((user, viewRegion) -> new KeyValue<>(viewRegion.get("region").textValue(), viewRegion))
             .groupByKey(Grouped.with(Serdes.String(), jsonSerde))
             .windowedBy(TimeWindows.of(Duration.ofDays(7)).advanceBy(Duration.ofSeconds(1)))
@@ -108,8 +110,7 @@ public class PageViewUntypedDemo {
 
         // usually the stream application would be running forever,
         // in this example we just let it run for some time and stop since the input data is finite.
-        //Thread.sleep(5000L);
-
-        //streams.close();
+        // Thread.sleep(5000L);
+        // streams.close();
     }
 }

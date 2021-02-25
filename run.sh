@@ -92,19 +92,13 @@ produce_user() {
 
 echo "Feeding input"
 produce_user 'alice:{"region": "narnia", "timestamp": 0}'
-produce_user 'alice:{"region": "narnia", "timestamp": 0}'
-produce_user '"bob":{"region": "narnia2", "timestamp": 2000}'
-produce_user 'eve:{"region": "narnia", "timestamp": 6000}'
-produce_user 'foo:{"region": "narnia", "timestamp": 1000}'
-produce_user 'gar:{"region": "narnia", "timestamp": 1000}'
-produce_user '"hob":{"region": "narnia2", "timestamp": 2000}'
-produce_pageview '"hob":{"user": "hob", "page": "foo", "timestamp": 3000}'
-produce_pageview 'alice:{"user": "alice", "page": "foo", "timestamp": 1}'
-produce_pageview '"alice":{"user": "alice", "page": "foo", "timestamp": 1000}'
-produce_pageview '"bob":{"user": "bob", "page": "foo", "timestamp": 3000}'
-produce_pageview 'eve:{"user": "eve", "page": "foo", "timestamp": 5000}'
-produce_pageview 'foo:{"user": "foo", "page": "foo", "timestamp": 0}'
-produce_pageview 'gar:{"user": "gar", "page": "foo", "timestamp": 0}'
+produce_user 'bob:{"region": "narnia2", "timestamp": 1000}'
+produce_user 'eve:{"region": "narnia", "timestamp": 2000}'
+produce_pageview 'alice:{"user": "alice", "page": "foo", "timestamp": 500}'
+produce_pageview 'bob:{"user": "bob", "page": "foo", "timestamp": 3000}'
+produce_pageview 'eve:{"user": "eve", "page": "foo", "timestamp": 4000}'
+produce_pageview 'eve:{"user": "eve", "page": "foo", "timestamp": 4001}'
+produce_pageview 'eve:{"user": "eve", "page": "foo", "timestamp": 4002}'
 
 echo "Reading output"
 kafka-console-consumer.sh --bootstrap-server localhost:9092 \
