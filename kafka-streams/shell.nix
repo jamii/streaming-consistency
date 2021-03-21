@@ -1,6 +1,6 @@
 let 
   
-  pkgs = import ./pkgs.nix;
+  pkgs = import ../pkgs.nix;
   
   apacheKafka = pkgs.apacheKafka.overrideAttrs (oldAttrs: rec {
       version = "2.7.0";
