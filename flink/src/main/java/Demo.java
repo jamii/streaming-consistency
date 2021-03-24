@@ -14,21 +14,27 @@ public class Demo {
         EnvironmentSettings settings = EnvironmentSettings.newInstance().build();
         TableEnvironment tEnv = TableEnvironment.create(settings);
 
-        tEnv.executeSql("CREATE TABLE inputs (\n" +
+        tEnv.executeSql(
+                "CREATE TABLE inputs (\n" +
                 "    id  BIGINT,\n" +
                 "    transaction_time TIMESTAMP(3),\n" +
                 "    WATERMARK FOR transaction_time AS transaction_time - INTERVAL '5' SECOND\n" +
                 ") WITH (\n" +
-                "    'connector' = 'datagen'\n" +
+                "    'connector' = 'datagen',\n" +
+                "    'fields.id.kind' = 'sequence',\n" +
+                "    'fields.id.start' = '0',\n" +
+                "    'fields.id.end' = '1000000'\n" +
                 ")");
 
-        tEnv.executeSql("CREATE TABLE outputs (\n" +
+        tEnv.executeSql(
+                "CREATE TABLE outputs (\n" +
                 "    other_id BIGINT,\n" +
                 "    id BIGINT,\n" +
                 "    PRIMARY KEY (other_id) NOT ENFORCED" +
                 ") WITH (\n" +
                 "    'connector' = 'print'\n" +
-                ")");
+                ")"
+            );
 
         Table inputs = tEnv.from("inputs");
         Table timeless_inputs = inputs.select(
