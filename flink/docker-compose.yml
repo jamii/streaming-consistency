@@ -65,7 +65,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
   data-generator:
       image: apache/data-generator:1
-      build: ../docker/data-generator
+      build: ./docker/data-generator
       depends_on:
         - kafka
   mysql:
@@ -77,7 +77,7 @@ services:
       MYSQL_DATABASE: "sql-demo"
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
     volumes:
-      - ../docker/mysql-spend-report-init:/docker-entrypoint-initdb.d
+      - ./docker/mysql-spend-report-init:/docker-entrypoint-initdb.d
       - ./data:/data
   grafana:
     image: grafana/grafana
@@ -86,6 +86,6 @@ services:
     depends_on:
       - mysql
     volumes:
-      - ../docker/grafana-spend-report-init/provisioning/:/etc/grafana/provisioning/
-      - ../docker/grafana-spend-report-init/dashboard.json:/etc/grafana/dashboard.json
-      - ../docker/grafana-spend-report-init/grafana.ini:/etc/grafana/grafana.ini
+      - ./docker/grafana-spend-report-init/provisioning/:/etc/grafana/provisioning/
+      - ./docker/grafana-spend-report-init/dashboard.json:/etc/grafana/dashboard.json
+      - ./docker/grafana-spend-report-init/grafana.ini:/etc/grafana/grafana.ini

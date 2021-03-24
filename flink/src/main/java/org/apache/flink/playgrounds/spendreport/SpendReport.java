@@ -29,13 +29,18 @@ import static org.apache.flink.table.api.Expressions.*;
 public class SpendReport {
 
     public static Table report(Table transactions) {
-        return transactions
-        .window(Tumble.over(lit(1).hour()).on($("transaction_time")).as("log_ts"))
-        .groupBy($("account_id"), $("log_ts"))
-        .select(
+        Table timeless_transactions = transactions.select(
             $("account_id"),
-            $("log_ts").start().as("log_ts"),
-            $("amount").sum().as("amount"));
+            $("amount"));
+        return timeless_transactions
+        .select(
+            $("account_id").as("other_account_id"))
+        .leftOuterJoin(
+            timeless_transactions,
+            $("account_id").isEqual($("other_account_id")))
+        .select(
+            $("other_account_id"),
+            $("account_id"));
     }
 
     public static void main(String[] args) throws Exception {
@@ -55,10 +60,9 @@ public class SpendReport {
                 ")");
 
         tEnv.executeSql("CREATE TABLE spend_report (\n" +
+                "    other_account_id BIGINT,\n" +
                 "    account_id BIGINT,\n" +
-                "    log_ts     TIMESTAMP(3),\n" +
-                "    amount     BIGINT\n," +
-                "    PRIMARY KEY (account_id, log_ts) NOT ENFORCED" +
+                "    PRIMARY KEY (other_account_id) NOT ENFORCED" +
                 ") WITH (\n" +
                 "  'connector'  = 'jdbc',\n" +
                 "  'url'        = 'jdbc:mysql://mysql:3306/sql-demo',\n" +
