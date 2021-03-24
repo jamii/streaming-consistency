@@ -22,7 +22,7 @@ echo "Compiling"
 mvn package
 
 echo "Running example"
-flink run ./target/spend-report-1.0.0.jar
+flink run ./target/demo-1.0.0.jar
 
 echo "Watching logs"
 tail -F /tmp/flink-logs/*

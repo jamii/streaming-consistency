@@ -20,13 +20,10 @@ under the License.
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.apache.flink</groupId>
-	<artifactId>spend-report</artifactId>
+	<groupId>net.scattered_thoughts.streaming_consistency</groupId>
+	<artifactId>demo</artifactId>
 	<version>1.0.0</version>
 	<packaging>jar</packaging>
-
-	<name>Flink Walkthrough Table Java</name>
-	<url>https://flink.apache.org</url>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -163,7 +160,7 @@ under the License.
                             </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.apache.flink.playgrounds.spendreport.SpendReport</mainClass>
+                                    <mainClass>net.scattered_thoughts.streaming_consistency.Demo</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
