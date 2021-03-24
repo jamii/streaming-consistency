@@ -30,8 +30,7 @@ public class SpendReport {
 
     public static Table report(Table transactions) {
         Table timeless_transactions = transactions.select(
-            $("account_id"),
-            $("amount"));
+            $("account_id"));
         return timeless_transactions
         .select(
             $("account_id").as("other_account_id"))
@@ -49,14 +48,10 @@ public class SpendReport {
 
         tEnv.executeSql("CREATE TABLE transactions (\n" +
                 "    account_id  BIGINT,\n" +
-                "    amount      BIGINT,\n" +
                 "    transaction_time TIMESTAMP(3),\n" +
                 "    WATERMARK FOR transaction_time AS transaction_time - INTERVAL '5' SECOND\n" +
                 ") WITH (\n" +
-                "    'connector' = 'kafka',\n" +
-                "    'topic'     = 'transactions',\n" +
-                "    'properties.bootstrap.servers' = 'kafka:9092',\n" +
-                "    'format'    = 'csv'\n" +
+                "    'connector' = 'datagen'\n" +
                 ")");
 
         tEnv.executeSql("CREATE TABLE spend_report (\n" +
@@ -64,12 +59,7 @@ public class SpendReport {
                 "    account_id BIGINT,\n" +
                 "    PRIMARY KEY (other_account_id) NOT ENFORCED" +
                 ") WITH (\n" +
-                "  'connector'  = 'jdbc',\n" +
-                "  'url'        = 'jdbc:mysql://mysql:3306/sql-demo',\n" +
-                "  'table-name' = 'spend_report',\n" +
-                "  'driver'     = 'com.mysql.jdbc.Driver',\n" +
-                "  'username'   = 'sql-demo',\n" +
-                "  'password'   = 'demo-sql'\n" +
+                "    'connector' = 'print'\n" +
                 ")");
 
         Table transactions = tEnv.from("transactions");
