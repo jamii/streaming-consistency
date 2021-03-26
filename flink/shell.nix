@@ -12,5 +12,6 @@ pkgs.mkShell {
         pkgs.flink
         
         pkgs.which
+        pkgs.python3
     ];
 }
