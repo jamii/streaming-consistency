@@ -1,5 +1,20 @@
 #!/usr/bin/env bash
 
+# cleanup processes on exit
+echo $$ > /sys/fs/cgroup/cpu/jamii-consistency-demo/tasks
+cleanup() {
+    echo "Cleaning up"
+    for pid in $(< /sys/fs/cgroup/cpu/jamii-consistency-demo/tasks) 
+    do
+        if [ $pid -ne $$ ]
+        then
+            kill -9 $pid 2> /dev/null || true
+        fi
+    done
+    echo "Done"
+}
+trap cleanup EXIT
+
 set -ue
 
 THIS_DIR="$(cd "$(dirname "$0")"; pwd -P)"
@@ -36,10 +51,6 @@ check_port_is_available "Kafka" 9092
 check_port_is_available "Confluent Control Center" 9021
 check_port_is_available "Zookeeper" 2181
 check_port_is_available 'Flink JobManager' 6123
-
-# TODO cleanup cgroup on exit
-# cleanup() {}
-# trap cleanup EXIT
 
 echo "Starting zookeeper"
 cat > $DATA_DIR/config/zookeeper.properties <<EOF
@@ -99,4 +110,5 @@ kafka-console-consumer.sh \
     --formatter kafka.tools.DefaultMessageFormatter \
     --property print.key=true \
     --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
-    --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer
+    --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
+    | tee ./tmp/outputs
