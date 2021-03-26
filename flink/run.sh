@@ -100,7 +100,7 @@ echo "Feeding inputs"
     --topic inputs \
     --property "key.separator=|" \
     --property "parse.key=true" \
-    > /dev/null
+    > /dev/null &
    
 echo "Watching outputs"
 kafka-console-consumer.sh \
@@ -111,4 +111,7 @@ kafka-console-consumer.sh \
     --property print.key=true \
     --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
     --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
-    | tee ./tmp/outputs
+    > ./tmp/outputs &
+    
+echo "All systems go. Hit ctrl-c when you're ready to shut everything down."
+read -r -d '' _
