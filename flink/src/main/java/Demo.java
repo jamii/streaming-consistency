@@ -15,7 +15,6 @@ import java.sql.Timestamp;
 import java.util.Properties;
 import org.apache.flink.streaming.connectors.kafka.*;
 import org.apache.flink.api.common.serialization.*;
-import org.apache.flink.formats.csv.*;
 
 public class Demo {
 
@@ -38,7 +37,9 @@ public class Demo {
             "    'properties.bootstrap.servers' = 'localhost:9092',",
             "    'properties.group.id' = 'demo',",
             "    'scan.startup.mode' = 'earliest-offset',",
-            "    'format' = 'csv'",
+            "    'format' = 'json',",
+            "    'json.fail-on-missing-field' = 'true',",
+            "    'json.ignore-parse-errors' = 'false'",
             ")"
         ));
         
