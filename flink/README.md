@@ -14,18 +14,10 @@ All systems go. Hit ctrl-c when you're ready to shut everything down.
 
 Leave that running for now.
 
-In another terminal do `tail -F ./tmp/outputs`. You should see something like this:
+In another terminal check out the outputs:
 
-```
-insert 84278,null
-delete 84278,null
-insert 84278,84278
-insert 84279,null
-delete 84279,null
-insert 84279,84279
-insert 84280,null
-delete 84280,null
-insert 84280,84280
-insert 84281,null
-```
+__./tmp/outer_join_with_time__. Some rows have nulls which are never retracted.
 
+__./tmp/outer_join_without_time__. Some rows have nulls which are immediately retracted.
+
+If you don't see a particular failure, hit ctrl-c in the first terminal and try again. They're all pretty racy.

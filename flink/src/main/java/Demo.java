@@ -25,52 +25,54 @@ public class Demo {
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(sEnv, settings);
 
         tEnv.executeSql(String.join("\n",
-            "CREATE TABLE inputs (",
+            "CREATE TABLE transactions (",
             "    id  BIGINT,",
-            "    kind SMALLINT,",
-            "    score DOUBLE,",
+            "    from_account INT,",
+            "    to_account INT,",
+            "    amount DOUBLE,",
             "    ts TIMESTAMP(3),",
             "    WATERMARK FOR ts AS ts - INTERVAL '5' SECOND",
             ") WITH (",  
             "    'connector' = 'kafka',",
-            "    'topic' = 'inputs',",
+            "    'topic' = 'transactions',",
             "    'properties.bootstrap.servers' = 'localhost:9092',",
             "    'properties.group.id' = 'demo',",
             "    'scan.startup.mode' = 'earliest-offset',",
             "    'format' = 'csv'",
             ")"
         ));
-
+        
         tEnv.executeSql(String.join("\n",
-            "CREATE TABLE outputs (",
-            "    other_id BIGINT,",
-            "    id BIGINT",
-            ") WITH (",
-            "    'connector' = 'kafka',",
-            "    'topic' = 'outputs',",
-            "    'properties.bootstrap.servers' = 'localhost:9092',",
-            "    'format' = 'csv'",
-            ")"
+            "CREATE VIEW outer_join_with_time(id, other_id) AS",
+            "SELECT",
+            "    t1.id, t2.id as other_id",
+            "FROM",
+            "    transactions as t1",
+            "LEFT JOIN",
+            "    transactions as t2",
+            "ON",
+            "    t1.id = t2.id AND t1.ts = t2.ts"
         ));
-
-        Table inputs = tEnv.from("inputs");
+        sinkToKafka(tEnv, "outer_join_with_time");
         
-        Table timeless_inputs = inputs.select(
-            $("id"));
-        Table outputs = timeless_inputs.select(
-            $("id").as("other_id"))
-        .leftOuterJoin(
-            timeless_inputs,
-            $("id").isEqual($("other_id")))
-        .select(
-            $("other_id"),
-            $("id"));
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW outer_join_without_time(id, other_id) AS",
+            "SELECT",
+            "    t1.id, t2.id as other_id",
+            "FROM",
+            "    (SELECT id FROM transactions) as t1",
+            "LEFT JOIN",
+            "    (SELECT id FROM transactions) as t2",
+            "ON",
+            "    t1.id = t2.id"
+        ));
+        sinkToKafka(tEnv, "outer_join_without_time");
         
-        //inputs.select(
+        //transactions.select(
             //$("id").as("other_id"),
             //$("ts").as("other_ts"))
         //.leftOuterJoin(
-            //inputs
+            //transactions
                 //.select(
                     //call(Demo.SlowMap.class, $("id")).as("id"),
                     //$("ts")),
@@ -83,13 +85,13 @@ public class Demo {
         //.executeInsert("outputs");
         
         //Table mean_of_square = 
-            //inputs
+            //transactions
             //.groupBy($("kind"))
             //.select(
                 //$("kind"), 
                 //$("score").power(lit(2)).avg().as("mean_of_square"));
         //Table square_of_mean = 
-            //inputs
+            //transactions
             //.groupBy($("kind"))
             //.select(
                 //$("kind").as("other_kind"), 
@@ -105,8 +107,8 @@ public class Demo {
             //.executeInsert("outputs2");      
         
         // TODO need repeats per ts?
-        // Table coarse_inputs = inputs.union(inputs).union(inputs);
-        //inputs
+        // Table coarse_transactions = transactions.union(transactions).union(transactions);
+        //transactions
             //.groupBy($("kind"))
             //.select(
                 //$("kind"), 
@@ -118,7 +120,7 @@ public class Demo {
                 //$("mean_of_square").minus($("square_of_mean")).power(0.5).as("stddev"))
             //.executeInsert("outputs2");
         
-        //inputs
+        //transactions
             //.groupBy($("kind"))
             //.select(
                 //$("kind"),
@@ -128,9 +130,9 @@ public class Demo {
                 //$("score").stddevPop().as("stddev"))
             //.executeInsert("outputs2");
             
-        //inputs.executeInsert("outputs3");
+        //transactions.executeInsert("outputs3");
             
-        //Table even = inputs
+        //Table even = transactions
             //.filter($("id").mod(lit(2)).isEqual(lit(0)))
             //.groupBy($("kind"))
             //.select(
@@ -152,28 +154,27 @@ public class Demo {
             //Types.DOUBLE(),
             //Types.SQL_TIMESTAMP()
         //);
-        //DataStream<Tuple4<Long, Integer, Double, Timestamp>> inputs_stream = tEnv.toAppendStream(inputs, tupleType);
+        //DataStream<Tuple4<Long, Integer, Double, Timestamp>> transactions_stream = tEnv.toAppendStream(transactions, tupleType);
         //
-        //inputs_stream
+        //transactions_stream
           //.keyBy(row -> row.getField(1))
           //.sum(2)
           //.print();
           
-      sinkToKafka(tEnv, outputs, "outputs");
         
       sEnv.execute("Demo");
     }
     
-    public static void sinkToKafka(StreamTableEnvironment tEnv, Table table, String topic) {
+    public static void sinkToKafka(StreamTableEnvironment tEnv, String name) {
         Properties properties = new Properties();
         properties.setProperty("bootstrap.servers", "localhost:9092");
         FlinkKafkaProducer<String> sink = new FlinkKafkaProducer<String>(
-            topic,                  
+            name,                  
             new SimpleStringSchema(),  
             properties
         ); 
         tEnv
-        .toRetractStream(table, Row.class)
+        .toRetractStream(tEnv.from(name), Row.class)
         .map(kv -> 
             (kv.getField(0) ? "insert" : "delete")
             + " "

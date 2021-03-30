@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -ue
+
 # cleanup processes on exit
 echo $$ > /sys/fs/cgroup/cpu/jamii-consistency-demo/tasks
 cleanup() {
@@ -14,8 +16,6 @@ cleanup() {
     echo "Done"
 }
 trap cleanup EXIT
-
-set -ue
 
 THIS_DIR="$(cd "$(dirname "$0")"; pwd -P)"
 
@@ -75,16 +75,16 @@ kafka-server-start.sh $DATA_DIR/config/server.properties >$DATA_DIR/logs/kafka &
 wait_for_port "kafka" 9092
 
 echo "Creating topics"
-kafka-topics.sh --create \
-    --bootstrap-server localhost:9092 \
-    --replication-factor 1 \
-    --partitions 1 \
-    --topic inputs
-kafka-topics.sh --create \
-    --bootstrap-server localhost:9092 \
-    --replication-factor 1 \
-    --partitions 1 \
-    --topic outputs
+create_topic() {
+    kafka-topics.sh --create \
+        --bootstrap-server localhost:9092 \
+        --replication-factor 1 \
+        --partitions 1 \
+        --topic "$1"
+}
+create_topic transactions
+create_topic outer_join_with_time
+create_topic outer_join_without_time
 
 echo "Starting flink"
 $FLINK_DIR/bin/start-cluster.sh
@@ -93,26 +93,30 @@ $FLINK_DIR/bin/start-cluster.sh
 echo "Compiling"
 mvn package
 
-echo "Running example"
+echo "Starting demo"
 flink run --detached ./target/demo-1.0.0.jar
 
 echo "Feeding inputs"
-./inputs.py | kafka-console-producer.sh \
+../transactions.py | kafka-console-producer.sh \
     --broker-list localhost:9092 \
-    --topic inputs \
+    --topic transactions \
     --property "key.separator=|" \
     --property "parse.key=true" \
     > /dev/null &
    
 echo "Watching outputs"
-kafka-console-consumer.sh \
-    --bootstrap-server localhost:9092 \
-    --topic outputs \
-    --from-beginning \
-    --formatter kafka.tools.DefaultMessageFormatter \
-    --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
-    --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
-    > ./tmp/outputs &
+watch_topic() { 
+    kafka-console-consumer.sh \
+        --bootstrap-server localhost:9092 \
+        --topic "$1" \
+        --from-beginning \
+        --formatter kafka.tools.DefaultMessageFormatter \
+        --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
+        --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
+        > "./tmp/$1" &
+}
+watch_topic outer_join_with_time
+watch_topic outer_join_without_time
     
 echo "All systems go. Hit ctrl-c when you're ready to shut everything down."
 read -r -d '' _
