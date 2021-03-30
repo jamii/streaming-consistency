@@ -123,6 +123,43 @@ public class Demo {
         ));
         sinkToKafka(tEnv, "total");
         
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW credits2(account, credits, ts) AS",
+            "SELECT",
+            "    to_account as account, sum(amount) as credits, max(ts) as ts",
+            "FROM",
+            "    transactions",
+            "GROUP BY",
+            "    to_account"
+        ));  
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW debits2(account, debits, ts) AS",
+            "SELECT",
+            "    from_account as account, sum(amount) as debits, max(ts) as ts",
+            "FROM",
+            "    transactions",
+            "GROUP BY",
+            "    from_account"
+        ));
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW balance2(account, balance, ts) AS",
+            "SELECT",
+            "    credits2.account, credits - debits as balance, credits2.ts",
+            "FROM",
+            "    credits2, debits2",
+            "WHERE",
+            "    credits2.account = debits2.account AND credits2.ts = debits2.ts"
+        ));
+        sinkToKafka(tEnv, "balance");
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW total2(total) AS",
+            "SELECT",
+            "    sum(balance)",
+            "FROM",
+            "    balance2"
+        ));
+        sinkToKafka(tEnv, "total2");
+        
         sEnv.execute("Demo");
     }
     

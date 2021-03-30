@@ -67,7 +67,7 @@ $ wc -l tmp/sums
 199999 tmp/sums
 ```
 
-__total__. Money is only moving around so total amount should always be 0. Each transaction is for $1. 
+__total/total2__. Money is only moving around so total amount should always be 0. Each transaction is for $1. 
 
 ``` bash
 $ grep -c insert tmp/total

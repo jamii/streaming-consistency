@@ -89,6 +89,7 @@ create_topic outer_join_without_time
 create_topic sums
 create_topic balance
 create_topic total
+create_topic total2
 
 echo "Starting flink"
 $FLINK_DIR/bin/start-cluster.sh
@@ -126,6 +127,7 @@ watch_topic outer_join_without_time
 watch_topic sums
 watch_topic balance
 watch_topic total
+watch_topic total2
     
 echo "All systems go. Hit ctrl-c when you're ready to shut everything down."
 read -r -d '' _
