@@ -43,6 +43,15 @@ public class Demo {
         ));
         
         tEnv.executeSql(String.join("\n",
+            "CREATE VIEW accepted_transactions(id) AS",
+            "SELECT",
+            "    id",
+            "FROM",
+            "    transactions"
+        ));
+        sinkToKafka(tEnv, "accepted_transactions");
+        
+        tEnv.executeSql(String.join("\n",
             "CREATE VIEW outer_join_with_time(id, other_id) AS",
             "SELECT",
             "    t1.id, t2.id as other_id",
@@ -68,101 +77,53 @@ public class Demo {
         ));
         sinkToKafka(tEnv, "outer_join_without_time");
         
-        //transactions.select(
-            //$("id").as("other_id"),
-            //$("ts").as("other_ts"))
-        //.leftOuterJoin(
-            //transactions
-                //.select(
-                    //call(Demo.SlowMap.class, $("id")).as("id"),
-                    //$("ts")),
-            //and(
-                //$("id").isEqual($("other_id")),
-                //$("other_ts").isEqual($("ts"))))
-        //.select(
-            //$("other_id"),
-            //$("id"))
-        //.executeInsert("outputs");
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW sums(total) AS",
+            "SELECT",
+            "    sum(amount) as total",
+            "FROM",
+            "    transactions"
+        ));
+        sinkToKafka(tEnv, "sums");
         
-        //Table mean_of_square = 
-            //transactions
-            //.groupBy($("kind"))
-            //.select(
-                //$("kind"), 
-                //$("score").power(lit(2)).avg().as("mean_of_square"));
-        //Table square_of_mean = 
-            //transactions
-            //.groupBy($("kind"))
-            //.select(
-                //$("kind").as("other_kind"), 
-                //$("score").avg().power(lit(2)).as("square_of_mean"));
-        //mean_of_square
-            //.join(
-                //square_of_mean,
-                //$("kind").isEqual($("other_kind")))
-            //.select(
-                //$("kind"),
-                //$("mean_of_square").minus($("square_of_mean")).as("variance"),
-                //$("mean_of_square").minus($("square_of_mean")).power(0.5).as("stddev"))
-            //.executeInsert("outputs2");      
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW credits(account, credits) AS",
+            "SELECT",
+            "    to_account as account, sum(amount) as credits",
+            "FROM",
+            "    transactions",
+            "GROUP BY",
+            "    to_account"
+        ));  
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW debits(account, debits) AS",
+            "SELECT",
+            "    from_account as account, sum(amount) as debits",
+            "FROM",
+            "    transactions",
+            "GROUP BY",
+            "    from_account"
+        ));
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW balance(account, balance) AS",
+            "SELECT",
+            "    credits.account, credits - debits as balance",
+            "FROM",
+            "    credits, debits",
+            "WHERE",
+            "    credits.account = debits.account"
+        ));
+        sinkToKafka(tEnv, "balance");
+        tEnv.executeSql(String.join("\n",
+            "CREATE VIEW total(total) AS",
+            "SELECT",
+            "    sum(balance)",
+            "FROM",
+            "    balance"
+        ));
+        sinkToKafka(tEnv, "total");
         
-        // TODO need repeats per ts?
-        // Table coarse_transactions = transactions.union(transactions).union(transactions);
-        //transactions
-            //.groupBy($("kind"))
-            //.select(
-                //$("kind"), 
-                //$("score").power(lit(2)).avg().as("mean_of_square"),
-                //$("score").avg().power(lit(2)).as("square_of_mean"))
-            //.select(
-                //$("kind"),
-                //$("mean_of_square").minus($("square_of_mean")).as("variance"),
-                //$("mean_of_square").minus($("square_of_mean")).power(0.5).as("stddev"))
-            //.executeInsert("outputs2");
-        
-        //transactions
-            //.groupBy($("kind"))
-            //.select(
-                //$("kind"),
-                //$("score").power(lit(2)).avg().minus($("score").avg().power(lit(2))).as("variance2"),
-                //$("score").power(lit(2)).avg().minus($("score").avg().power(lit(2))).power(0.5).as("stddev2"),
-                //$("score").varPop().as("variance"),
-                //$("score").stddevPop().as("stddev"))
-            //.executeInsert("outputs2");
-            
-        //transactions.executeInsert("outputs3");
-            
-        //Table even = transactions
-            //.filter($("id").mod(lit(2)).isEqual(lit(0)))
-            //.groupBy($("kind"))
-            //.select(
-                //$("kind"), 
-                //$("id").count().as("even_total"));
-        //all.join(
-            //even.select(
-                //$("kind").as("other_kind"),
-                //$("even_total")), 
-             //$("kind").isEqual($("other_kind")))
-            //.select(
-                //$("kind"),
-                //$("all_total").minus($("even_total")).as("total"))
-            //.executeInsert("outputs2");
-        
-        //TupleTypeInfo<Tuple4<Long, Integer, Double, Timestamp>> tupleType = new TupleTypeInfo<>(
-            //Types.LONG(),
-            //Types.INT(),
-            //Types.DOUBLE(),
-            //Types.SQL_TIMESTAMP()
-        //);
-        //DataStream<Tuple4<Long, Integer, Double, Timestamp>> transactions_stream = tEnv.toAppendStream(transactions, tupleType);
-        //
-        //transactions_stream
-          //.keyBy(row -> row.getField(1))
-          //.sum(2)
-          //.print();
-          
-        
-      sEnv.execute("Demo");
+        sEnv.execute("Demo");
     }
     
     public static void sinkToKafka(StreamTableEnvironment tEnv, String name) {
