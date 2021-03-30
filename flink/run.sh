@@ -86,7 +86,9 @@ kafka-topics.sh --create \
     --topic outputs
 
 echo "Starting flink"
+mkdir /tmp/flink-logs || true
 $FLINK_DIR/bin/start-cluster.sh
+#wait_for_port "flink" 6123
 
 echo "Compiling"
 mvn package

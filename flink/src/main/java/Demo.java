@@ -24,71 +24,34 @@ public class Demo {
         StreamExecutionEnvironment sEnv = StreamExecutionEnvironment.getExecutionEnvironment();
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(sEnv, settings);
 
-        tEnv.executeSql(
-                "CREATE TABLE inputs (\n" +
-                "    id  BIGINT,\n" +
-                "    kind SMALLINT,\n" +
-                "    score DOUBLE,\n" +
-                "    ts TIMESTAMP(3),\n" +
-                "    WATERMARK FOR ts AS ts - INTERVAL '5' SECOND\n" +
-                ") WITH (\n" +  
-                "    'connector' = 'kafka',\n" +
-                "    'topic' = 'inputs',\n" +
-                "    'properties.bootstrap.servers' = 'localhost:9092',\n" +
-                "    'properties.group.id' = 'demo',\n" +
-                "    'scan.startup.mode' = 'earliest-offset',\n" +
-                "    'format' = 'csv'\n" +
-                ")");
-                
-         //tEnv.executeSql(
-                //"CREATE TABLE inputs (\n" +
-                //"    id  BIGINT,\n" +
-                //"    kind SMALLINT,\n" +
-                //"    score DOUBLE,\n" +
-                //"    ts TIMESTAMP(3),\n" +
-                //"    WATERMARK FOR ts AS ts - INTERVAL '5' SECOND\n" +
-                //") WITH (\n" +
-                //"    'connector' = 'filesystem',\n" +
-                //"    'path' = '/tmp/flink-inputs.csv',\n" +
-                //"    'format' = 'csv'\n" +
-                //")");
+        tEnv.executeSql(String.join("\n",
+            "CREATE TABLE inputs (",
+            "    id  BIGINT,",
+            "    kind SMALLINT,",
+            "    score DOUBLE,",
+            "    ts TIMESTAMP(3),",
+            "    WATERMARK FOR ts AS ts - INTERVAL '5' SECOND",
+            ") WITH (",  
+            "    'connector' = 'kafka',",
+            "    'topic' = 'inputs',",
+            "    'properties.bootstrap.servers' = 'localhost:9092',",
+            "    'properties.group.id' = 'demo',",
+            "    'scan.startup.mode' = 'earliest-offset',",
+            "    'format' = 'csv'",
+            ")"
+        ));
 
-        tEnv.executeSql(
-                "CREATE TABLE outputs (\n" +
-                "    other_id BIGINT,\n" +
-                "    id BIGINT\n" +
-                ") WITH (\n" +
-                "    'connector' = 'kafka',\n" +
-                "    'topic' = 'outputs',\n" +
-                "    'properties.bootstrap.servers' = 'localhost:9092',\n" +
-                "    'format' = 'csv'\n" +
-                ")"
-            );
-         
-        tEnv.executeSql(
-                "CREATE TABLE outputs2 (\n" +
-                "    kind SMALLINT,\n" +
-                "    variance DOUBLE,\n" +
-                "    stddev DOUBLE,\n" +
-                "    variance2 DOUBLE,\n" +
-                "    stddev2 DOUBLE,\n" +
-                "    PRIMARY KEY (kind) NOT ENFORCED" +
-                ") WITH (\n" +
-                "    'connector' = 'print'\n" +
-                ")"
-            );
-            
-         tEnv.executeSql(
-                "CREATE TABLE outputs3 (\n" +
-                "    id  BIGINT,\n" +
-                "    kind SMALLINT,\n" +
-                "    score SMALLINT,\n" +
-                "    ts TIMESTAMP(3),\n" +
-                "    WATERMARK FOR ts AS ts - INTERVAL '5' SECOND\n" +
-                ") WITH (\n" +
-                "    'connector' = 'print'\n" +
-                ")"
-            );
+        tEnv.executeSql(String.join("\n",
+            "CREATE TABLE outputs (",
+            "    other_id BIGINT,",
+            "    id BIGINT",
+            ") WITH (",
+            "    'connector' = 'kafka',",
+            "    'topic' = 'outputs',",
+            "    'properties.bootstrap.servers' = 'localhost:9092',",
+            "    'format' = 'csv'",
+            ")"
+        ));
 
         Table inputs = tEnv.from("inputs");
         
@@ -196,21 +159,27 @@ public class Demo {
           //.sum(2)
           //.print();
           
+      sinkToKafka(tEnv, outputs, "outputs");
+        
+      sEnv.execute("Demo");
+    }
+    
+    public static void sinkToKafka(StreamTableEnvironment tEnv, Table table, String topic) {
         Properties properties = new Properties();
         properties.setProperty("bootstrap.servers", "localhost:9092");
         FlinkKafkaProducer<String> sink = new FlinkKafkaProducer<String>(
-            "outputs",                  
+            topic,                  
             new SimpleStringSchema(),  
-            properties); 
+            properties
+        ); 
         tEnv
-            .toRetractStream(outputs, Row.class)
-            .map(kv -> 
-                    (kv.getField(0) ? "insert" : "delete")
-                    + " "
-                    + kv.getField(1).toString())
-            .addSink(sink);
-        
-        sEnv.execute("Demo");
+        .toRetractStream(table, Row.class)
+        .map(kv -> 
+            (kv.getField(0) ? "insert" : "delete")
+            + " "
+            + kv.getField(1).toString()
+        )
+        .addSink(sink);
     }
     
     public static class SlowMap extends ScalarFunction {
