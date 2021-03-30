@@ -29,6 +29,20 @@ import (builtins.fetchTarball {
                 url = "mirror://apache/flink/${name}/${name}-bin-scala_2.11.tgz";
                 sha256 = "17c2v185m3q58dcwvpyzgaymf7767m8dap0xb318ijphb9sapvpk";
             };
+            installPhase = ''
+                rm bin/*.bat || true
+                
+                mkdir -p $out/bin $out/opt/flink
+                mv * $out/opt/flink/
+                makeWrapper $out/opt/flink/bin/flink $out/bin/flink \
+                    --prefix PATH : ${super.jre}/bin
+                
+                cat <<EOF >> $out/opt/flink/conf/flink-conf.yaml
+                env.java.home: ${super.jre}
+                io.tmp.dirs: ./tmp
+                env.log.dir: ./tmp/logs/flink/
+                EOF
+            '';
         });
         
     })];

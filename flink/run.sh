@@ -23,6 +23,7 @@ DATA_DIR=$THIS_DIR/tmp
 echo "Data will be stored in $DATA_DIR"
 rm -rf $DATA_DIR/*
 mkdir -p $DATA_DIR/{config,logs}
+mkdir -p $DATA_DIR/logs/flink
 
 KAFKA_DIR=$(dirname $(which kafka-server-start.sh))/..
 
@@ -86,7 +87,6 @@ kafka-topics.sh --create \
     --topic outputs
 
 echo "Starting flink"
-mkdir /tmp/flink-logs || true
 $FLINK_DIR/bin/start-cluster.sh
 #wait_for_port "flink" 6123
 
