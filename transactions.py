@@ -4,7 +4,7 @@ import random
 import json
 
 random.seed(42)
-max_id = 100000
+max_id = 1000000
 for id in range(0,max_id):
     second = ((50 * id) // max_id) + random.randint(0,9)
     row = json.dumps({
