@@ -59,13 +59,21 @@ public class Demo {
             //.leftJoin(transactions, (t1, t2) -> 
                 //t2 == null ? "null" : t2.get("id").textValue())
             //.toStream().to("outer_join", Produced.with(Serdes.String(), Serdes.String()));
-        
+            
+        transactions
+            .groupBy((k,v) -> KeyValue.pair("yolo", v), Grouped.with(Serdes.String(), jsonSerde))
+            .aggregate(
+                () -> 0L,
+                (k, v, sum) -> sum + v.get("amount").longValue(),
+                (k, v, sum) -> sum - v.get("amount").longValue())
+            .toStream().to("sums", Produced.with(Serdes.String(), Serdes.Long()));
+          
         final Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "demo");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, JsonTimestampExtractor.class);
-        props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        // props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
         final KafkaStreams streams = new KafkaStreams(builder.build(), props);
         streams.start();
     }
