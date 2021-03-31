@@ -80,8 +80,7 @@ create_topic() {
 }
 create_topic transactions
 create_topic accepted_transactions
-create_topic outer_join_with_time
-create_topic outer_join_without_time
+create_topic outer_join
 create_topic sums
 create_topic balance
 create_topic total
@@ -114,8 +113,7 @@ watch_topic() {
 }
 watch_topic transactions
 watch_topic accepted_transactions
-watch_topic outer_join_with_time
-watch_topic outer_join_without_time
+watch_topic outer_join
 watch_topic sums
 watch_topic balance
 watch_topic total
