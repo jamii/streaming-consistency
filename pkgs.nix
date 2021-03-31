@@ -41,6 +41,8 @@ import (builtins.fetchTarball {
                 env.java.home: ${super.jre}
                 io.tmp.dirs: ./tmp
                 env.log.dir: ./tmp/logs/flink/
+                jobmanager.memory.process.size: 8192m
+                taskmanager.memory.process.size: 8192m
                 EOF
             '';
         });
