@@ -11,5 +11,6 @@ pkgs.mkShell {
         pkgs.apacheKafka
         
         pkgs.which
+        pkgs.python3
     ];
 }

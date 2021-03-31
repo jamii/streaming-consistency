@@ -2,6 +2,21 @@
 
 set -ue
 
+# cleanup processes on exit
+echo $$ > /sys/fs/cgroup/cpu/jamii-consistency-demo/tasks
+cleanup() {
+    echo "Cleaning up"
+    for pid in $(< /sys/fs/cgroup/cpu/jamii-consistency-demo/tasks) 
+    do
+        if [ $pid -ne $$ ]
+        then
+            kill -9 $pid 2> /dev/null || true
+        fi
+    done
+    echo "Done"
+}
+trap cleanup EXIT
+
 THIS_DIR="$(cd "$(dirname "$0")"; pwd -P)"
 
 DATA_DIR=$THIS_DIR/tmp
@@ -34,10 +49,6 @@ check_port_is_available "Kafka" 9092
 check_port_is_available "Confluent Control Center" 9021
 check_port_is_available "Zookeeper" 2181
 
-# TODO cleanup cgroup on exit
-# cleanup() {}
-# trap cleanup EXIT
-
 echo "Starting zookeeper"
 cat > $DATA_DIR/config/zookeeper.properties <<EOF
 dataDir=$DATA_DIR/zookeeper
@@ -60,51 +71,55 @@ kafka-server-start.sh $DATA_DIR/config/server.properties >$DATA_DIR/logs/kafka &
 wait_for_port "kafka" 9092
 
 echo "Creating topics"
-kafka-topics.sh --create \
-    --bootstrap-server localhost:9092 \
-    --replication-factor 1 \
-    --partitions 1 \
-    --topic streams-pageview-input
-kafka-topics.sh --create \
-    --bootstrap-server localhost:9092 \
-    --replication-factor 1 \
-    --partitions 1 \
-    --topic streams-userprofile-input
-kafka-topics.sh --create \
-    --bootstrap-server localhost:9092 \
-    --replication-factor 1 \
-    --partitions 1 \
-    --topic streams-pageviewstats-untyped-output
+create_topic() {
+    kafka-topics.sh --create \
+        --bootstrap-server localhost:9092 \
+        --replication-factor 1 \
+        --partitions 1 \
+        --topic "$1"
+}
+create_topic transactions
+create_topic accepted_transactions
+create_topic outer_join_with_time
+create_topic outer_join_without_time
+create_topic sums
+create_topic balance
+create_topic total
+create_topic total2
 
 echo "Compiling"
 mvn package
 
 echo "Running streams (check $DATA_DIR/logs/streams)"
-java -cp target/demo-1.0-SNAPSHOT-jar-with-dependencies.jar net.scattered_thoughts.streaming_consistency.PageViewUntypedDemo >$DATA_DIR/logs/streams &
+java -cp target/demo-1.0-SNAPSHOT-jar-with-dependencies.jar net.scattered_thoughts.streaming_consistency.Demo >$DATA_DIR/logs/streams &
 
-produce_pageview() {
-    echo -e "$1" | kafka-console-producer.sh --broker-list localhost:9092 --topic streams-pageview-input --property "key.separator=:" --property "parse.key=true" 
+echo "Feeding inputs"
+../transactions.py | kafka-console-producer.sh \
+    --broker-list localhost:9092 \
+    --topic transactions \
+    --property "key.separator=|" \
+    --property "parse.key=true" \
+    > /dev/null &
+   
+echo "Watching outputs"
+watch_topic() { 
+    kafka-console-consumer.sh \
+        --bootstrap-server localhost:9092 \
+        --topic "$1" \
+        --from-beginning \
+        --formatter kafka.tools.DefaultMessageFormatter \
+        --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
+        --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
+        > "./tmp/$1" &
 }
-
-produce_user() {
-    echo -e "$1" | kafka-console-producer.sh --broker-list localhost:9092 --topic streams-user-input --property "key.separator=:" --property "parse.key=true" 
-}
-
-echo "Feeding input"
-produce_user 'alice:{"region": "narnia", "timestamp": 0}'
-produce_user 'bob:{"region": "narnia2", "timestamp": 1000}'
-produce_user 'eve:{"region": "narnia", "timestamp": 2000}'
-produce_pageview 'alice:{"user": "alice", "page": "foo", "timestamp": 500}'
-produce_pageview 'bob:{"user": "bob", "page": "foo", "timestamp": 3000}'
-produce_pageview 'eve:{"user": "eve", "page": "foo", "timestamp": 4000}'
-produce_pageview 'eve:{"user": "eve", "page": "foo", "timestamp": 4001}'
-produce_pageview 'eve:{"user": "eve", "page": "foo", "timestamp": 4002}'
-
-echo "Reading output"
-kafka-console-consumer.sh --bootstrap-server localhost:9092 \
-    --topic streams-pageviewstats-untyped-output \
-    --from-beginning \
-    --formatter kafka.tools.DefaultMessageFormatter \
-    --property print.key=true \
-    --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
-    --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer
+watch_topic transactions
+watch_topic accepted_transactions
+watch_topic outer_join_with_time
+watch_topic outer_join_without_time
+watch_topic sums
+watch_topic balance
+watch_topic total
+watch_topic total2
+    
+echo "All systems go. Hit ctrl-c when you're ready to shut everything down."
+read -r -d '' _

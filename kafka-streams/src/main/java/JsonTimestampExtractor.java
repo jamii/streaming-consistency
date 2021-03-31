@@ -29,7 +29,7 @@ public class JsonTimestampExtractor implements TimestampExtractor {
     @Override
     public long extract(final ConsumerRecord<Object, Object> record, final long partitionTime) {
         if (record.value() instanceof JsonNode) {
-            return ((JsonNode) record.value()).get("timestamp").longValue();
+            return ((JsonNode) record.value()).get("ts").longValue();
         }
 
         throw new IllegalArgumentException("JsonTimestampExtractor cannot recognize the record value " + record.value());
