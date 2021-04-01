@@ -66,7 +66,8 @@ public class Demo {
                 //() -> 0L,
                 //(k, v, sum) -> sum + v.get("amount").longValue(),
                 //(k, v, sum) -> sum - v.get("amount").longValue())
-            //.toStream().to("sums", Produced.with(Serdes.String(), Serdes.Long()));
+            //.mapValues(v -> v.toString())
+            //.toStream().to("sums", Produced.with(Serdes.String(), Serdes.String()));
             
         //KTable<Long, Long> credits = transactions
             //.groupBy((k,v) -> KeyValue.pair(v.get("to_account").longValue(), v))
@@ -83,14 +84,17 @@ public class Demo {
         //KTable<Long, Long> balance = credits
             //.join(debits, (c, d) -> c - d);
         //balance
-            //.toStream().to("balance", Produced.with(Serdes.Long(), Serdes.Long()));
+            //.toStream()
+            //.map((k,v) -> KeyValue.pair(k.toString(), v.toString()))
+            //.to("balance", Produced.with(Serdes.String(), Serdes.String()));
         //balance
             //.groupBy((k,v) -> KeyValue.pair("yolo", v), Grouped.with(Serdes.String(), Serdes.Long()))
             //.aggregate(
                 //() -> 0L,
                 //(k, v, sum) -> sum + v,
                 //(k, v, sum) -> sum - v)
-            //.toStream().to("total", Produced.with(Serdes.String(), Serdes.Long()));
+            //.mapValues(v -> v.toString())
+            //.toStream().to("total", Produced.with(Serdes.String(), Serdes.String()));
         
         System.out.println(builder.build().describe());
           
@@ -100,6 +104,9 @@ public class Demo {
         props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, JsonTimestampExtractor.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
+        // neither of these seem to help, but feel free to uncomment them
+        // props.put(StreamsConfig.MAX_TASK_IDLE_MS_CONFIG, 500);
+        // props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10 * 1000);
         final KafkaStreams streams = new KafkaStreams(builder.build(), props);
         
         // Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
