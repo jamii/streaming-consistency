@@ -52,21 +52,45 @@ public class Demo {
         final StreamsBuilder builder = new StreamsBuilder();
         final KTable<String, JsonNode> transactions = builder.table("transactions", consumed);
         
-        transactions
-            .toStream().to("accepted_transactions", Produced.with(Serdes.String(), jsonSerde));
+        //transactions
+            //.toStream().to("accepted_transactions", Produced.with(Serdes.String(), jsonSerde));
         
         //transactions
             //.leftJoin(transactions, (t1, t2) -> 
                 //t2 == null ? "null" : t2.get("id").textValue())
             //.toStream().to("outer_join", Produced.with(Serdes.String(), Serdes.String()));
             
-        transactions
-            .groupBy((k,v) -> KeyValue.pair("yolo", v), Grouped.with(Serdes.String(), jsonSerde))
+        //transactions
+            //.groupBy((k,v) -> KeyValue.pair("yolo", v), Grouped.with(Serdes.String(), jsonSerde))
+            //.aggregate(
+                //() -> 0L,
+                //(k, v, sum) -> sum + v.get("amount").longValue(),
+                //(k, v, sum) -> sum - v.get("amount").longValue())
+            //.toStream().to("sums", Produced.with(Serdes.String(), Serdes.Long()));
+            
+        KTable<Long, Long> credits = transactions
+            .groupBy((k,v) -> KeyValue.pair(v.get("to_account").longValue(), v))
             .aggregate(
                 () -> 0L,
                 (k, v, sum) -> sum + v.get("amount").longValue(),
-                (k, v, sum) -> sum - v.get("amount").longValue())
-            .toStream().to("sums", Produced.with(Serdes.String(), Serdes.Long()));
+                (k, v, sum) -> sum - v.get("amount").longValue());
+        KTable<Long, Long> debits = transactions
+            .groupBy((k,v) -> KeyValue.pair(v.get("from_account").longValue(), v))
+            .aggregate(
+                () -> 0L,
+                (k, v, sum) -> sum + v.get("amount").longValue(),
+                (k, v, sum) -> sum - v.get("amount").longValue());
+        KTable<Long, Long> balance = credits
+            .join(debits, (c, d) -> c - d);
+        balance
+            .toStream().to("balance", Produced.with(Serdes.Long(), Serdes.Long()));
+        balance
+            .groupBy((k,v) -> KeyValue.pair("yolo", v), Grouped.with(Serdes.String(), Serdes.Long()))
+            .aggregate(
+                () -> 0L,
+                (k, v, sum) -> sum + v,
+                (k, v, sum) -> sum - v)
+            .toStream().to("total", Produced.with(Serdes.String(), Serdes.Long()));
           
         final Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "demo");
