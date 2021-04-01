@@ -14,4 +14,4 @@ for id in range(0,max_id):
         'amount': 1,
         'ts': f'2021-01-01 00:00:{second:02d}.000',
     })
-    print(f'{id} | {row}')
+    print(f'{id}|{row}')
