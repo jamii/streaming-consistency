@@ -52,8 +52,8 @@ public class Demo {
         final StreamsBuilder builder = new StreamsBuilder();
         final KTable<String, JsonNode> transactions = builder.table("transactions", consumed);
         
-        //transactions
-            //.toStream().to("accepted_transactions", Produced.with(Serdes.String(), jsonSerde));
+        transactions
+            .toStream().to("accepted_transactions", Produced.with(Serdes.String(), jsonSerde));
         
         //transactions
             //.leftJoin(transactions, (t1, t2) -> 
@@ -68,37 +68,41 @@ public class Demo {
                 //(k, v, sum) -> sum - v.get("amount").longValue())
             //.toStream().to("sums", Produced.with(Serdes.String(), Serdes.Long()));
             
-        KTable<Long, Long> credits = transactions
-            .groupBy((k,v) -> KeyValue.pair(v.get("to_account").longValue(), v))
-            .aggregate(
-                () -> 0L,
-                (k, v, sum) -> sum + v.get("amount").longValue(),
-                (k, v, sum) -> sum - v.get("amount").longValue());
-        KTable<Long, Long> debits = transactions
-            .groupBy((k,v) -> KeyValue.pair(v.get("from_account").longValue(), v))
-            .aggregate(
-                () -> 0L,
-                (k, v, sum) -> sum + v.get("amount").longValue(),
-                (k, v, sum) -> sum - v.get("amount").longValue());
-        KTable<Long, Long> balance = credits
-            .join(debits, (c, d) -> c - d);
-        balance
-            .toStream().to("balance", Produced.with(Serdes.Long(), Serdes.Long()));
-        balance
-            .groupBy((k,v) -> KeyValue.pair("yolo", v), Grouped.with(Serdes.String(), Serdes.Long()))
-            .aggregate(
-                () -> 0L,
-                (k, v, sum) -> sum + v,
-                (k, v, sum) -> sum - v)
-            .toStream().to("total", Produced.with(Serdes.String(), Serdes.Long()));
+        //KTable<Long, Long> credits = transactions
+            //.groupBy((k,v) -> KeyValue.pair(v.get("to_account").longValue(), v))
+            //.aggregate(
+                //() -> 0L,
+                //(k, v, sum) -> sum + v.get("amount").longValue(),
+                //(k, v, sum) -> sum - v.get("amount").longValue());
+        //KTable<Long, Long> debits = transactions
+            //.groupBy((k,v) -> KeyValue.pair(v.get("from_account").longValue(), v))
+            //.aggregate(
+                //() -> 0L,
+                //(k, v, sum) -> sum + v.get("amount").longValue(),
+                //(k, v, sum) -> sum - v.get("amount").longValue());
+        //KTable<Long, Long> balance = credits
+            //.join(debits, (c, d) -> c - d);
+        //balance
+            //.toStream().to("balance", Produced.with(Serdes.Long(), Serdes.Long()));
+        //balance
+            //.groupBy((k,v) -> KeyValue.pair("yolo", v), Grouped.with(Serdes.String(), Serdes.Long()))
+            //.aggregate(
+                //() -> 0L,
+                //(k, v, sum) -> sum + v,
+                //(k, v, sum) -> sum - v)
+            //.toStream().to("total", Produced.with(Serdes.String(), Serdes.Long()));
+        
+        System.out.println(builder.build().describe());
           
         final Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "demo");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, JsonTimestampExtractor.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        // props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
+        props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
         final KafkaStreams streams = new KafkaStreams(builder.build(), props);
+        
+        // Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
         streams.start();
     }
 }
