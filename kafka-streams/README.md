@@ -18,7 +18,7 @@ Leave that running for now.
 
 In another terminal check out the outputs:
 
-__accepted_transactions__. In about 1 in 5 runs, some of these are missing. 
+__accepted_transactions__. In about 1 in 5 runs, some of these are missing ([KAFKA-12608](https://issues.apache.org/jira/browse/KAFKA-12608)):
 
 ```
 $ wc -l tmp/*transactions
@@ -58,4 +58,4 @@ $ diff in out | tail
  < 25797
 ```
 
-On uncommenting any of the other examples in src/main/java/Demo.java, I find that no output is produced at all, except for on one run out of many on a very slow machine. That strongly suggests to me that there is a race somewhere, rather than a logic bug in the examples.
+On uncommenting any of the other examples in src/main/java/Demo.java, I find that no output is produced at all, except for on one run out of many on a very slow machine ([KAFKA-12594](https://issues.apache.org/jira/browse/KAFKA-12594)). That strongly suggests to me that there is a race somewhere, rather than a logic bug in the examples.

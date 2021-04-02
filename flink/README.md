@@ -38,7 +38,7 @@ $ tail tmp/transactions
  99999, 2, 1, 1, 2021-01-01 00:00:52
 ```
 
-__outer_join_with_time__. Some rows have nulls which are never retracted.
+__outer_join_with_time__. Some rows have nulls which are never retracted ([FLINK-22075](https://issues.apache.org/jira/browse/FLINK-22075?page=com.atlassian.jira.plugin.system.issuetabpanels%3Aall-tabpanel)).
 
 ``` bash
 $ grep -c insert tmp/outer_join_with_time
