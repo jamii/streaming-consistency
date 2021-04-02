@@ -58,4 +58,4 @@ $ diff in out | tail
  < 25797
 ```
 
-On uncommenting any of the other examples in src/main/java/Demo.java, I find that no output is produced at all. 
+On uncommenting any of the other examples in src/main/java/Demo.java, I find that no output is produced at all, except for on one run out of many on a very slow machine. That strongly suggests to me that there is a race somewhere, rather than a logic bug in the examples.
