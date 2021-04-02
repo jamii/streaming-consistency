@@ -32,11 +32,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.Grouped;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KTable;
-import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.*;
 
 import java.util.Properties;
 
@@ -65,7 +61,8 @@ public class Demo {
             //.aggregate(
                 //() -> 0L,
                 //(k, v, sum) -> sum + v.get("amount").longValue(),
-                //(k, v, sum) -> sum - v.get("amount").longValue())
+                //(k, v, sum) -> sum - v.get("amount").longValue(),
+                //Materialized.with(Serdes.String(), Serdes.Long()))
             //.mapValues(v -> v.toString())
             //.toStream().to("sums", Produced.with(Serdes.String(), Serdes.String()));
             
