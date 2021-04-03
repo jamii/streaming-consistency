@@ -1,4 +1,4 @@
-CREATE MATERIALIZED VIEW transactions AS
+CREATE MATERIALIZED VIEW transactions_without_time AS
 SELECT
     CAST(data->'id' AS INT) as id,
     CAST(data->'from_account' AS INT) as from_account,
@@ -9,6 +9,14 @@ FROM (
     SELECT CAST(convert_from(data, 'utf8') AS jsonb) AS data
     FROM transactions_source
 );
+
+CREATE MATERIALIZED VIEW transactions AS
+SELECT
+    *
+FROM
+    transactions_without_time
+WHERE
+    CAST(EXTRACT(EPOCH FROM ts) AS NUMERIC) < mz_logical_timestamp();
 
 CREATE MATERIALIZED VIEW accepted_transactions AS
 SELECT

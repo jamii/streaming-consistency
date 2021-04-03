@@ -47,29 +47,31 @@ check_port_is_available "Materialize" 6875
 
 echo "Starting materialized"
 materialized \
+    --experimental \
+    --logical-compaction-window=off \
     --data-directory ./tmp/ \
     -w 4 \
     2>&1 > $DATA_DIR/logs/materialized &
 wait_for_port "materialized" 6875
 
+echo "Feeding inputs"
+../transactions.py | cut -d'|' -f2 >> $DATA_DIR/transactions
+
 echo "Creating views"
 touch "$DATA_DIR/transactions"
 # have to make source separately to get the absolute path
-psql postgres://materialize@localhost:6875/materialize -c "CREATE SOURCE transactions_source FROM FILE '$DATA_DIR/transactions' WITH (tail = true) FORMAT BYTES;"
+psql postgres://materialize@localhost:6875/materialize -c "CREATE SOURCE transactions_source FROM FILE '$DATA_DIR/transactions' FORMAT BYTES;"
 psql postgres://materialize@localhost:6875/materialize -f ./views.sql
    
 echo "Watching outputs"
 watch_view() { 
-     unbuffer psql postgres://materialize@localhost:6875/materialize -c "COPY (TAIL $1) TO STDOUT" > $DATA_DIR/$1 &
+     unbuffer psql postgres://materialize@localhost:6875/materialize -c "COPY (TAIL $1 AS OF 0) TO STDOUT" > $DATA_DIR/$1 &
 }
 watch_view accepted_transactions
 watch_view outer_join
 watch_view sums
 watch_view balance
 watch_view total
-
-echo "Feeding inputs"
-../transactions.py | cut -d'|' -f2 >> $DATA_DIR/transactions
     
 echo "All systems go. Hit ctrl-c when you're ready to shut everything down."
 read -r -d '' _
