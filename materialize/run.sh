@@ -60,7 +60,7 @@ psql postgres://materialize@localhost:6875/materialize -f ./views.sql
    
 echo "Watching outputs"
 watch_view() { 
-    ./tail.py $1 > $DATA_DIR/$1 &
+     unbuffer psql postgres://materialize@localhost:6875/materialize -c "COPY (TAIL $1) TO STDOUT" > $DATA_DIR/$1 &
 }
 watch_view accepted_transactions
 watch_view outer_join
