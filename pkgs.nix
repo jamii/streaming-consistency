@@ -47,5 +47,22 @@ import (builtins.fetchTarball {
             '';
         });
         
+        materialized = super.stdenv.mkDerivation {
+            name = "materialized";
+            src = fetchTarball {
+                url = "https://downloads.mtrlz.dev/materialized-v0.7.1-x86_64-unknown-linux-gnu.tar.gz";
+                sha256 = "1lhx0fvjsqih3wxnm0vkdnynm2ly43cr04qm917k83bj1gv71lnp";
+            };
+            nativeBuildInputs = [
+                super.autoPatchelfHook
+            ];
+            dontConfigure = true;
+            dontBuild = true;
+            installPhase = ''
+                mkdir -p $out
+                mv ./* $out
+            '';
+        };
+        
     })];
 }
