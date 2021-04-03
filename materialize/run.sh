@@ -51,7 +51,7 @@ materialized \
     --logical-compaction-window=off \
     --data-directory ./tmp/ \
     -w 4 \
-    2>&1 > $DATA_DIR/logs/materialized &
+    > $DATA_DIR/logs/materialized 2>&1 &
 wait_for_port "materialized" 6875
 
 echo "Feeding inputs"
