@@ -11,6 +11,6 @@ pkgs.mkShell {
         pkgs.apacheKafka
         
         pkgs.which
-        pkgs.python3.8
+        pkgs.python38
     ];
 }
