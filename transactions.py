@@ -6,7 +6,7 @@ import json
 random.seed(42)
 max_id = 1000000
 for id in range(0,max_id):
-    second = ((50 * id) // max_id) + random.randint(0,9)
+    second = ((50 * id) // max_id) + random.randint(0,10)
     row = json.dumps({
         'id': id,
         'from_account': random.randint(0,9),

@@ -16,7 +16,7 @@ SELECT
 FROM
     transactions_without_time
 WHERE
-    CAST(EXTRACT(EPOCH FROM ts) AS NUMERIC) < mz_logical_timestamp();
+    (CAST(EXTRACT(EPOCH FROM ts) AS NUMERIC) * 10000) <= mz_logical_timestamp();
 
 CREATE MATERIALIZED VIEW accepted_transactions AS
 SELECT
