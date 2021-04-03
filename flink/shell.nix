@@ -12,6 +12,6 @@ pkgs.mkShell {
         pkgs.flink
         
         pkgs.which
-        pkgs.python3
+        pkgs.python3.8
     ];
 }
