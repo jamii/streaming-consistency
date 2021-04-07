@@ -99,16 +99,11 @@ $FLINK_DIR/bin/start-cluster.sh
 echo "Compiling"
 mvn package
 
-echo "Starting demo"
-flink run --detached ./target/demo-1.0.0.jar
-
 echo "Feeding inputs"
-../transactions.py | kafka-console-producer.sh \
-    --broker-list localhost:9092 \
-    --topic transactions \
-    --property "key.separator=|" \
-    --property "parse.key=true" \
-    > /dev/null &
+../transactions.py | cut -d'|' -f2 > $DATA_DIR/transactions
+
+echo "Starting demo"
+flink run --detached -Dexecution.runtime-mode=BATCH ./target/demo-1.0.0.jar
    
 echo "Watching outputs"
 watch_topic() { 
@@ -121,7 +116,6 @@ watch_topic() {
         --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
         > "./tmp/$1" &
 }
-watch_topic transactions
 watch_topic accepted_transactions
 watch_topic outer_join_with_time
 watch_topic outer_join_without_time
