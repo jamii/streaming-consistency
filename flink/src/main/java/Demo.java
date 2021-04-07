@@ -79,15 +79,6 @@ public class Demo {
         sinkToKafka(tEnv, "outer_join_without_time");
         
         tEnv.executeSql(String.join("\n",
-            "CREATE VIEW sums(total) AS",
-            "SELECT",
-            "    sum(amount) as total",
-            "FROM",
-            "    transactions"
-        ));
-        sinkToKafka(tEnv, "sums");
-        
-        tEnv.executeSql(String.join("\n",
             "CREATE VIEW credits(account, credits) AS",
             "SELECT",
             "    to_account as account, sum(amount) as credits",
@@ -96,6 +87,7 @@ public class Demo {
             "GROUP BY",
             "    to_account"
         ));  
+        sinkToKafka(tEnv, "credits");
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW debits(account, debits) AS",
             "SELECT",
@@ -105,6 +97,7 @@ public class Demo {
             "GROUP BY",
             "    from_account"
         ));
+        sinkToKafka(tEnv, "debits");
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW balance(account, balance) AS",
             "SELECT",
@@ -180,16 +173,5 @@ public class Demo {
             + kv.getField(1).toString()
         )
         .addSink(sink);
-    }
-    
-    public static class SlowMap extends ScalarFunction {
-        public Long eval(Long a) {
-            // do something for ~10ms
-            try {
-                Thread.sleep(100);
-            } catch (Exception e) {
-            }
-            return a;
-        }
     }
 }

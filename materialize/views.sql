@@ -35,12 +35,6 @@ LEFT JOIN
 ON
     t1.id = t2.id;
 
-CREATE MATERIALIZED VIEW sums AS
-SELECT
-    sum(amount) AS total
-FROM
-    transactions;
-
 CREATE MATERIALIZED VIEW credits AS
 SELECT
     to_account AS account, 

@@ -12,8 +12,4 @@ You should eventually see something like this:
 All systems go. Hit ctrl-c when you're ready to shut everything down.
 ```
 
-Leave that running for now.
-
----
-
-In another terminal check out the outputs:
+Leave that running for now and check out the outputs in `./tmp` in another terminal.

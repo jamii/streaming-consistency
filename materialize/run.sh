@@ -69,9 +69,10 @@ watch_view() {
 }
 watch_view accepted_transactions
 watch_view outer_join
-watch_view sums
+watch_view credits
+watch_view debits
 watch_view balance
 watch_view total
-    
+
 echo "All systems go. Hit ctrl-c when you're ready to shut everything down."
 read -r -d '' _
