@@ -23,7 +23,7 @@ struct Transaction {
 
 fn main() {
     timely::execute_from_args(std::env::args(), move |worker| {
-        let mut transactions: InputSession<_, Transaction, _> = InputSession::new();
+        let mut transactions: InputSession<_, Transaction, i64> = InputSession::new();
 
         let accepted_transactions_file = Arc::new(Mutex::new(
             File::create("./tmp/accepted_transactions").unwrap(),
@@ -35,43 +35,53 @@ fn main() {
 
         worker.dataflow(|scope| {
             let transactions = transactions.to_collection(scope);
-            sink_to_file(accepted_transactions_file, transactions);
+            sink_to_file(accepted_transactions_file, &transactions);
+
+            // TODO be_bytes nonsense is to get around f64 not impl-ing ExchangeData
 
             let debits = transactions
-                .map(|t| (t.from_account, t.amount.into_inner()))
-                .reduce(|_key, inputs, output| {
-                    let mut amount = 0;
-                    for ((account, sub_amount), diff) in inputs {
-                        amount += sub_amount * diff;
+                .map(|t| (t.from_account, t.amount.into_inner().to_be_bytes()))
+                .reduce(|_account, inputs, output| {
+                    let mut amount = 0.0;
+                    for (sub_amount, diff) in inputs {
+                        amount += f64::from_be_bytes(**sub_amount) * (*diff as f64);
                     }
-                    output.push((amount, 1));
+                    output.push((OrderedFloat(amount), 1));
                 });
-            sink_to_file(debits_file, debits);
+            sink_to_file(debits_file, &debits);
 
             let credits = transactions
-                .map(|t| (t.to_account, t.amount.into_inner()))
-                .reduce(|_key, inputs, output| {
-                    let mut amount = 0;
-                    for ((account, sub_amount), diff) in inputs {
-                        amount += sub_amount * diff;
+                .map(|t| (t.to_account, t.amount.into_inner().to_be_bytes()))
+                .reduce(|_account, inputs, output| {
+                    let mut amount = 0.0;
+                    for (sub_amount, diff) in inputs {
+                        amount += f64::from_be_bytes(**sub_amount) * (*diff as f64);
                     }
-                    output.push((amount, 1));
+                    output.push((OrderedFloat(amount), 1));
                 });
-            sink_to_file(credits_file, credits);
+            sink_to_file(credits_file, &credits);
 
             let balance = debits
-                .join(&credits)
-                .map(|(account, (credits, debits))| (account, credits - debits));
-            sink_to_file(balance_file, balance);
+                .map(|(a, d)| (a, d.into_inner().to_be_bytes()))
+                .join(&credits.map(|(a, c)| (a, c.into_inner().to_be_bytes())))
+                .map(|(account, (credits, debits))| {
+                    (
+                        account,
+                        OrderedFloat(f64::from_be_bytes(credits) - f64::from_be_bytes(debits)),
+                    )
+                });
+            sink_to_file(balance_file, &balance);
 
-            let total = balance.reduce(|_key, inputs, output| {
-                let mut total = 0;
-                for ((_account, balance), diff) in inputs {
-                    total += balance * diff;
-                }
-                output.push((total, 1));
-            });
-            sink_to_file(total_file, total);
+            let total = balance
+                .map(|(_account, balance)| ((), balance.to_be_bytes()))
+                .reduce(|_, inputs, output| {
+                    let mut total = 0.0;
+                    for (balance, diff) in inputs {
+                        total += f64::from_be_bytes(**balance) * (*diff as f64);
+                    }
+                    output.push((OrderedFloat(total), 1));
+                });
+            sink_to_file(total_file, &total);
         });
 
         if worker.index() == 0 {
@@ -107,8 +117,10 @@ fn main() {
     .unwrap();
 }
 
-fn sink_to_file<G, D, R>(file: Arc<Mutex<File>>, stream: differential_dataflow::Collection<G, D, R>)
-where
+fn sink_to_file<G, D, R>(
+    file: Arc<Mutex<File>>,
+    stream: &differential_dataflow::Collection<G, D, R>,
+) where
     G: timely::dataflow::scopes::Scope,
     D: timely::Data + std::fmt::Debug,
     R: differential_dataflow::difference::Semigroup,
