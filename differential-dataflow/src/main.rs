@@ -22,9 +22,6 @@ struct Transaction {
 }
 
 fn main() {
-    timely::execute_from_args(std::env::args(), move |worker| {
-        let mut transactions: InputSession<_, Transaction, i64> = InputSession::new();
-
         let accepted_transactions_file = Arc::new(Mutex::new(
             File::create("./tmp/accepted_transactions").unwrap(),
         ));
@@ -32,10 +29,13 @@ fn main() {
         let credits_file = Arc::new(Mutex::new(File::create("./tmp/credits").unwrap()));
         let balance_file = Arc::new(Mutex::new(File::create("./tmp/balance").unwrap()));
         let total_file = Arc::new(Mutex::new(File::create("./tmp/total").unwrap()));
+        
+    timely::execute_from_args(std::env::args(), move |worker| {
+        let mut transactions: InputSession<_, Transaction, i64> = InputSession::new();
 
         worker.dataflow(|scope| {
             let transactions = transactions.to_collection(scope);
-            sink_to_file(accepted_transactions_file, &transactions);
+            sink_to_file(accepted_transactions_file.clone(), &transactions);
 
             // TODO be_bytes nonsense is to get around f64 not impl-ing ExchangeData
 
@@ -48,7 +48,7 @@ fn main() {
                     }
                     output.push((OrderedFloat(amount), 1));
                 });
-            sink_to_file(debits_file, &debits);
+            sink_to_file(debits_file.clone(), &debits);
 
             let credits = transactions
                 .map(|t| (t.to_account, t.amount.into_inner().to_be_bytes()))
@@ -59,7 +59,7 @@ fn main() {
                     }
                     output.push((OrderedFloat(amount), 1));
                 });
-            sink_to_file(credits_file, &credits);
+            sink_to_file(credits_file.clone(), &credits);
 
             let balance = debits
                 .map(|(a, d)| (a, d.into_inner().to_be_bytes()))
@@ -70,7 +70,7 @@ fn main() {
                         OrderedFloat(f64::from_be_bytes(credits) - f64::from_be_bytes(debits)),
                     )
                 });
-            sink_to_file(balance_file, &balance);
+            sink_to_file(balance_file.clone(), &balance);
 
             let total = balance
                 .map(|(_account, balance)| ((), balance.to_be_bytes()))
@@ -81,7 +81,7 @@ fn main() {
                     }
                     output.push((OrderedFloat(total), 1));
                 });
-            sink_to_file(total_file, &total);
+            sink_to_file(total_file.clone(), &total);
         });
 
         if worker.index() == 0 {
