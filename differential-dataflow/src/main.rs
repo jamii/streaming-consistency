@@ -31,12 +31,10 @@ fn main() {
             let transactions = transactions.to_collection(scope);
             sink_to_file("accepted_transactions", &transactions);
 
-            let debits = sum(transactions.map(|t| (t.from_account, t.amount)))
-                .count();
+            let debits = sum(transactions.map(|t| (t.from_account, t.amount))).count();
             sink_to_file("debits", &debits);
 
-            let credits = sum(transactions.map(|t| (t.to_account, t.amount)))
-                .count();
+            let credits = sum(transactions.map(|t| (t.to_account, t.amount))).count();
             sink_to_file("credits", &credits);
 
             let balance = debits
@@ -81,7 +79,9 @@ fn main() {
     .unwrap();
 }
 
-fn sum<G, K>(collection: differential_dataflow::Collection<G, (K, i64), isize>) -> differential_dataflow::Collection<G, (K, i64), isize>
+fn sum<G, K>(
+    collection: differential_dataflow::Collection<G, (K, i64), isize>,
+) -> differential_dataflow::Collection<G, (K, i64), isize>
 where
     G: timely::dataflow::scopes::Scope<Timestamp = isize>,
     K: differential_dataflow::ExchangeData
