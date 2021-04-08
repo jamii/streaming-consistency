@@ -1,4 +1,3 @@
-
 let 
   
   pkgs = import ../pkgs.nix;
@@ -7,7 +6,7 @@ in
 
 pkgs.mkShell {
     buildInputs = [
-        pkgs.rustup
+        pkgs.cargo
         
         pkgs.python38
     ];

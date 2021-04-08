@@ -1,21 +1,22 @@
 use chrono::{Duration, NaiveDateTime};
 use differential_dataflow::input::InputSession;
 use differential_dataflow::operators::*;
-use timely::dataflow::operators::exchange::Exchange;
-use timely::dataflow::operators::inspect::Inspect;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader};
-use serde::{Serialize, Deserialize};
+use timely::dataflow::operators::exchange::Exchange;
+use timely::dataflow::operators::inspect::Inspect;
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Serialize, Deserialize)]
 struct Transaction {
     id: i64,
     from_account: i64,
     to_account: i64,
-    // This diff diffdoes not impl Ord
-    // and Orddiff does not impl Abomonate or Serialize
+    // This should be f64
+    // but f64 does not impl Ord
+    // and OrderedFloat<f64> does not impl Abomonate or Serialize
     // and orphan rules prevent us from fixing this without writing our own float wrapper
     amount: i64,
     // This should be NaiveDateTime but that also does not impl Serialize
@@ -30,47 +31,43 @@ fn main() {
             let transactions = transactions.to_collection(scope);
             sink_to_file("accepted_transactions", &transactions);
 
-            let debits = transactions
-                .map(|t| (t.from_account, t.amount))
-                .reduce(|_account, inputs, output| {
+            let debits = transactions.map(|t| (t.from_account, t.amount)).reduce(
+                |_account, inputs, output| {
                     let mut amount = 0;
                     for (sub_amount, diff) in inputs {
                         amount += **sub_amount * (*diff as i64);
                     }
                     output.push((amount, 1));
-                });
+                },
+            );
             sink_to_file("debits", &debits);
 
-            let credits = transactions
-                .map(|t| (t.to_account, t.amount))
-                .reduce(|_account, inputs, output| {
+            let credits = transactions.map(|t| (t.to_account, t.amount)).reduce(
+                |_account, inputs, output| {
                     let mut amount = 0;
                     for (sub_amount, diff) in inputs {
                         amount += **sub_amount * (*diff as i64);
                     }
                     output.push((amount, 1));
-                });
+                },
+            );
             sink_to_file("credits", &credits);
 
             let balance = debits
                 .join(&credits)
-                .map(|(account, (credits, debits))| {
-                    (
-                        account,
-                        credits - debits,
-                    )
-                });
+                .map(|(account, (credits, debits))| (account, credits - debits));
             sink_to_file("balance", &balance);
 
-            let total = balance
-                .map(|(_account, balance)| ((), balance))
-                .reduce(|_, inputs, output| {
-                    let mut total = 0;
-                    for (balance, diff) in inputs {
-                        total += **balance * (*diff as i64);
-                    }
-                    output.push((total, 1));
-                });
+            let total =
+                balance
+                    .map(|(_account, balance)| ((), balance))
+                    .reduce(|_, inputs, output| {
+                        let mut total = 0;
+                        for (balance, diff) in inputs {
+                            total += **balance * (*diff as i64);
+                        }
+                        output.push((total, 1));
+                    });
             sink_to_file("total", &total);
         });
 
@@ -89,7 +86,8 @@ fn main() {
                         json["ts"].as_str().unwrap(),
                         "%Y-%m-%d %H:%M:%S%.f",
                     )
-                    .unwrap().timestamp_nanos(),
+                    .unwrap()
+                    .timestamp_nanos(),
                 };
                 watermark =
                     watermark.max(transaction.ts - Duration::seconds(5).num_nanoseconds().unwrap());
@@ -106,22 +104,24 @@ fn main() {
     .unwrap();
 }
 
-fn sink_to_file<T, G, D, R>(
-    name: &str,
-    collection: &differential_dataflow::Collection<G, D, R>,
-) where
-    T: std::fmt::Debug,
-    G: timely::dataflow::scopes::Scope<Timestamp=T>,
-    D: timely::Data + std::fmt::Debug,
-    R: differential_dataflow::difference::Semigroup,
-    (D, T, R): timely::ExchangeData,
+fn sink_to_file<G, D>(name: &str, collection: &differential_dataflow::Collection<G, D, i64>)
+where
+    G: timely::dataflow::scopes::Scope<Timestamp = i64>,
+    D: timely::ExchangeData + std::fmt::Debug,
 {
     let mut file = File::create(&format!("./tmp/{}", name)).unwrap();
     collection
-    .inner
-    // move everything to worker 0
-    .exchange(|_| 0)
-    .inspect(move |t| {
-        write!(&mut file, "{:?}\n", t).unwrap();
-    });
+        .inner
+        // move everything to worker 0
+        .exchange(|_| 0)
+        .inspect_batch(move |_, rows| {
+            for (row, timestamp, diff) in rows {
+                let update = if *diff > 0 {
+                    format!("insert {}x", diff)
+                } else {
+                    format!("delete {}x", diff)
+                };
+                write!(&mut file, "{} {:?} at {:?}\n", update, row, timestamp).unwrap();
+            }
+        });
 }
