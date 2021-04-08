@@ -18,14 +18,14 @@ struct Transaction {
 }
 
 fn main() {
-        let accepted_transactions_file = Arc::new(Mutex::new(
-            File::create("./tmp/accepted_transactions").unwrap(),
-        ));
-        let debits_file = Arc::new(Mutex::new(File::create("./tmp/debits").unwrap()));
-        let credits_file = Arc::new(Mutex::new(File::create("./tmp/credits").unwrap()));
-        let balance_file = Arc::new(Mutex::new(File::create("./tmp/balance").unwrap()));
-        let total_file = Arc::new(Mutex::new(File::create("./tmp/total").unwrap()));
-        
+    let accepted_transactions_file = Arc::new(Mutex::new(
+        File::create("./tmp/accepted_transactions").unwrap(),
+    ));
+    let debits_file = Arc::new(Mutex::new(File::create("./tmp/debits").unwrap()));
+    let credits_file = Arc::new(Mutex::new(File::create("./tmp/credits").unwrap()));
+    let balance_file = Arc::new(Mutex::new(File::create("./tmp/balance").unwrap()));
+    let total_file = Arc::new(Mutex::new(File::create("./tmp/total").unwrap()));
+
     timely::execute_from_args(std::env::args(), move |worker| {
         let mut transactions: InputSession<_, Transaction, i64> = InputSession::new();
 
