@@ -31,13 +31,11 @@ fn main() {
             let transactions = transactions.to_collection(scope);
             sink_to_file("accepted_transactions", &transactions);
 
-            let debits = transactions
-                .explode(|t| Some((t.from_account, t.amount as isize)))
+            let debits = sum(transactions.map(|t| (t.from_account, t.amount)))
                 .count();
             sink_to_file("debits", &debits);
 
-            let credits = transactions
-                .explode(|t| Some((t.to_account, t.amount as isize)))
+            let credits = sum(transactions.map(|t| (t.to_account, t.amount)))
                 .count();
             sink_to_file("credits", &credits);
 
@@ -46,7 +44,7 @@ fn main() {
                 .map(|(account, (credits, debits))| (account, credits - debits));
             sink_to_file("balance", &balance);
 
-            let total = balance.explode(|(_, balance)| Some(((), balance))).count();
+            let total = sum(balance.map(|(_, balance)| ((), balance as i64))).count();
             sink_to_file("total", &total);
         });
 
@@ -81,6 +79,22 @@ fn main() {
         }
     })
     .unwrap();
+}
+
+fn sum<G, K>(collection: differential_dataflow::Collection<G, (K, i64), isize>) -> differential_dataflow::Collection<G, (K, i64), isize>
+where
+    G: timely::dataflow::scopes::Scope<Timestamp = isize>,
+    K: differential_dataflow::ExchangeData
+        + differential_dataflow::hashable::Hashable
+        + std::fmt::Debug,
+{
+    collection.reduce(|_k, inputs, output| {
+        let mut total = 0;
+        for (num, diff) in inputs {
+            total += **num * (*diff as i64);
+        }
+        output.push((total, 1));
+    })
 }
 
 fn sink_to_file<G, D>(name: &str, collection: &differential_dataflow::Collection<G, D, isize>)
