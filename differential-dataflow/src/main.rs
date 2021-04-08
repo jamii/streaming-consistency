@@ -31,10 +31,10 @@ fn main() {
             let transactions = transactions.to_collection(scope);
             sink_to_file("accepted_transactions", &transactions);
 
-            let debits = sum(transactions.map(|t| (t.from_account, t.amount))).count();
+            let debits = sum(transactions.map(|t| (t.from_account, t.amount)));
             sink_to_file("debits", &debits);
 
-            let credits = sum(transactions.map(|t| (t.to_account, t.amount))).count();
+            let credits = sum(transactions.map(|t| (t.to_account, t.amount)));
             sink_to_file("credits", &credits);
 
             let balance = debits
@@ -42,7 +42,7 @@ fn main() {
                 .map(|(account, (credits, debits))| (account, credits - debits));
             sink_to_file("balance", &balance);
 
-            let total = sum(balance.map(|(_, balance)| ((), balance as i64))).count();
+            let total = sum(balance.map(|(_, balance)| ((), balance as i64)));
             sink_to_file("total", &total);
         });
 
