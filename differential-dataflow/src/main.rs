@@ -29,22 +29,49 @@ fn main() {
             File::create("./tmp/accepted_transactions").unwrap(),
         ));
         let debits_file = Arc::new(Mutex::new(File::create("./tmp/debits").unwrap()));
+        let credits_file = Arc::new(Mutex::new(File::create("./tmp/credits").unwrap()));
+        let balance_file = Arc::new(Mutex::new(File::create("./tmp/balance").unwrap()));
+        let total_file = Arc::new(Mutex::new(File::create("./tmp/total").unwrap()));
 
         worker.dataflow(|scope| {
             let transactions = transactions.to_collection(scope);
             sink_to_file(accepted_transactions_file, transactions);
 
-            let debits =
-                transactions
-                    .map(|t| (t.from_account, t.amount))
-                    .reduce(|_key, ts, output| {
-                        let mut amount = 0;
-                        for (t, c) in ts {
-                            amount += t.amount.to_inner() * c;
-                        }
-                        output.push((amount, 1));
-                    });
+            let debits = transactions
+                .map(|t| (t.from_account, t.amount.into_inner()))
+                .reduce(|_key, inputs, output| {
+                    let mut amount = 0;
+                    for ((account, sub_amount), diff) in inputs {
+                        amount += sub_amount * diff;
+                    }
+                    output.push((amount, 1));
+                });
             sink_to_file(debits_file, debits);
+
+            let credits = transactions
+                .map(|t| (t.to_account, t.amount.into_inner()))
+                .reduce(|_key, inputs, output| {
+                    let mut amount = 0;
+                    for ((account, sub_amount), diff) in inputs {
+                        amount += sub_amount * diff;
+                    }
+                    output.push((amount, 1));
+                });
+            sink_to_file(credits_file, credits);
+
+            let balance = debits
+                .join(&credits)
+                .map(|(account, (credits, debits))| (account, credits - debits));
+            sink_to_file(balance_file, balance);
+
+            let total = balance.reduce(|_key, inputs, output| {
+                let mut total = 0;
+                for ((_account, balance), diff) in inputs {
+                    total += balance * diff;
+                }
+                output.push((total, 1));
+            });
+            sink_to_file(total_file, total);
         });
 
         if worker.index() == 0 {
