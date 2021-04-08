@@ -4,19 +4,20 @@
 
 use chrono::{Duration, NaiveDateTime};
 use differential_dataflow::input::InputSession;
-use differential_dataflow::operators::Reduce;
-use ordered_float::NotNan;
+use differential_dataflow::operators::*;
+use ordered_float::OrderedFloat;
 use serde_json::Value;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader};
+use std::sync::{Arc, Mutex};
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Copy, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug)]
 struct Transaction {
     id: i64,
     from_account: i64,
     to_account: i64,
-    amount: NotNan<f64>,
+    amount: OrderedFloat<f64>,
     ts: NaiveDateTime,
 }
 
@@ -24,21 +25,26 @@ fn main() {
     timely::execute_from_args(std::env::args(), move |worker| {
         let mut transactions: InputSession<_, Transaction, _> = InputSession::new();
 
+        let accepted_transactions_file = Arc::new(Mutex::new(
+            File::create("./tmp/accepted_transactions").unwrap(),
+        ));
+        let debits_file = Arc::new(Mutex::new(File::create("./tmp/debits").unwrap()));
+
         worker.dataflow(|scope| {
             let transactions = transactions.to_collection(scope);
-            sink_to_file("accepted_transactions", transactions);
-            
-            let debits = 
+            sink_to_file(accepted_transactions_file, transactions);
+
+            let debits =
                 transactions
-                .map(|t| (t.from_account, t.amount))
-                .reduce(|_key, ts, output| {
-                    let mut amount = 0;
-                    for (t, c) in ts {
-                        amount += t.amount.to_inner() * c;
-                    }
-                    output.push((amount, 1));
-                });
-            sink_to_file("debits", debits); 
+                    .map(|t| (t.from_account, t.amount))
+                    .reduce(|_key, ts, output| {
+                        let mut amount = 0;
+                        for (t, c) in ts {
+                            amount += t.amount.to_inner() * c;
+                        }
+                        output.push((amount, 1));
+                    });
+            sink_to_file(debits_file, debits);
         });
 
         if worker.index() == 0 {
@@ -51,7 +57,7 @@ fn main() {
                     id: json["id"].as_i64().unwrap(),
                     from_account: json["from_account"].as_i64().unwrap(),
                     to_account: json["to_account"].as_i64().unwrap(),
-                    amount: NotNan::new(json["amount"].as_f64().unwrap()).unwrap(),
+                    amount: OrderedFloat(json["amount"].as_f64().unwrap()),
                     ts: NaiveDateTime::parse_from_str(
                         json["ts"].as_str().unwrap(),
                         "%Y-%m-%d %H:%M:%S%.f",
@@ -74,16 +80,14 @@ fn main() {
     .unwrap();
 }
 
-fn sink_to_file<G, D, R>(filename: &str, stream: differential_dataflow::Collection<G, D, R>)
+fn sink_to_file<G, D, R>(file: Arc<Mutex<File>>, stream: differential_dataflow::Collection<G, D, R>)
 where
     G: timely::dataflow::scopes::Scope,
     D: timely::Data + std::fmt::Debug,
     R: differential_dataflow::difference::Semigroup,
 {
-    // TODO this is probably not correct with multiple workers
-    let mut file = File::create(&format!("./tmp/{}", filename)).unwrap();
     stream.inspect(move |t| {
-        println!("{:?}", t);
+        let mut file = file.lock().unwrap();
         write!(&mut file, "{:?}\n", t).unwrap();
         file.flush().unwrap();
     });
