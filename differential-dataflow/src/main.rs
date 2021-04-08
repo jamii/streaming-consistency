@@ -52,7 +52,6 @@ fn main() {
 
         if worker.index() == 0 {
             let mut low_watermark = 0;
-            let mut high_watermark = 0;
             let transactions_file = File::open("./tmp/transactions").unwrap();
             for line in BufReader::new(transactions_file).lines() {
                 let line = line.unwrap();
@@ -71,7 +70,6 @@ fn main() {
                 };
                 low_watermark = low_watermark
                     .max(transaction.ts - Duration::seconds(5).num_nanoseconds().unwrap());
-                high_watermark = high_watermark.max(transaction.ts);
                 if transaction.ts >= low_watermark {
                     transactions.update_at(transaction, transaction.ts as isize, 1);
                 }
@@ -80,9 +78,6 @@ fn main() {
                 transactions.flush();
                 worker.step();
             }
-            transactions.advance_to(high_watermark as isize);
-            transactions.flush();
-            worker.step();
         }
     })
     .unwrap();
@@ -97,8 +92,7 @@ where
 {
     let mut file = File::create(&format!("./tmp/{}", name)).unwrap();
     collection
-        // Calling consolidate will merge redundant updates
-        //.consolidate()
+        .consolidate()
         .inner
         // move everything to worker 0
         .exchange(|_| 0)
@@ -107,7 +101,7 @@ where
                 let update = if *diff > 0 {
                     format!("insert {}x", diff)
                 } else {
-                    format!("delete {}x", diff)
+                    format!("delete {}x", -diff)
                 };
                 write!(&mut file, "{} {:?} at {:?}\n", update, row, timestamp).unwrap();
             }
