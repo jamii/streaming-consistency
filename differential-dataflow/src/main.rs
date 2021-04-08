@@ -1,7 +1,3 @@
-//extern crate timely;
-//extern crate differential_dataflow;
-//extern crate chronos;
-
 use chrono::{Duration, NaiveDateTime};
 use differential_dataflow::input::InputSession;
 use differential_dataflow::operators::*;
