@@ -1,13 +1,15 @@
 use chrono::{Duration, NaiveDateTime};
 use differential_dataflow::input::InputSession;
 use differential_dataflow::operators::*;
+use timely::dataflow::operators::exchange::Exchange;
+use timely::dataflow::operators::inspect::Inspect;
 use serde_json::Value;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader};
-use std::sync::{Arc, Mutex};
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Serialize, Deserialize)]
 struct Transaction {
     id: i64,
     from_account: i64,
@@ -16,24 +18,17 @@ struct Transaction {
     // and Orddiff does not impl Abomonate or Serialize
     // and orphan rules prevent us from fixing this without writing our own float wrapper
     amount: i64,
-    ts: NaiveDateTime,
+    // This should be NaiveDateTime but that also does not impl Serialize
+    ts: i64,
 }
 
 fn main() {
-    let accepted_transactions_file = Arc::new(Mutex::new(
-        File::create("./tmp/accepted_transactions").unwrap(),
-    ));
-    let debits_file = Arc::new(Mutex::new(File::create("./tmp/debits").unwrap()));
-    let credits_file = Arc::new(Mutex::new(File::create("./tmp/credits").unwrap()));
-    let balance_file = Arc::new(Mutex::new(File::create("./tmp/balance").unwrap()));
-    let total_file = Arc::new(Mutex::new(File::create("./tmp/total").unwrap()));
-
     timely::execute_from_args(std::env::args(), move |worker| {
         let mut transactions: InputSession<_, Transaction, i64> = InputSession::new();
 
         worker.dataflow(|scope| {
             let transactions = transactions.to_collection(scope);
-            sink_to_file(accepted_transactions_file.clone(), &transactions);
+            sink_to_file("accepted_transactions", &transactions);
 
             let debits = transactions
                 .map(|t| (t.from_account, t.amount))
@@ -44,7 +39,7 @@ fn main() {
                     }
                     output.push((amount, 1));
                 });
-            sink_to_file(debits_file.clone(), &debits);
+            sink_to_file("debits", &debits);
 
             let credits = transactions
                 .map(|t| (t.to_account, t.amount))
@@ -55,7 +50,7 @@ fn main() {
                     }
                     output.push((amount, 1));
                 });
-            sink_to_file(credits_file.clone(), &credits);
+            sink_to_file("credits", &credits);
 
             let balance = debits
                 .join(&credits)
@@ -65,7 +60,7 @@ fn main() {
                         credits - debits,
                     )
                 });
-            sink_to_file(balance_file.clone(), &balance);
+            sink_to_file("balance", &balance);
 
             let total = balance
                 .map(|(_account, balance)| ((), balance))
@@ -76,7 +71,7 @@ fn main() {
                     }
                     output.push((total, 1));
                 });
-            sink_to_file(total_file.clone(), &total);
+            sink_to_file("total", &total);
         });
 
         if worker.index() == 0 {
@@ -94,16 +89,15 @@ fn main() {
                         json["ts"].as_str().unwrap(),
                         "%Y-%m-%d %H:%M:%S%.f",
                     )
-                    .unwrap(),
+                    .unwrap().timestamp_nanos(),
                 };
-                let ts = transaction.ts.timestamp_nanos();
                 watermark =
-                    watermark.max((transaction.ts - Duration::seconds(5)).timestamp_nanos());
-                if ts >= watermark {
-                    transactions.update_at(transaction, ts, 1);
+                    watermark.max(transaction.ts - Duration::seconds(5).num_nanoseconds().unwrap());
+                if transaction.ts >= watermark {
+                    transactions.update_at(transaction, transaction.ts, 1);
                 }
                 transactions.advance_to(watermark);
-                // 1 transaction per batch
+                // 1 transaction per batch - slow but maximum opportunity for bugs
                 transactions.flush();
                 worker.step();
             }
@@ -112,17 +106,22 @@ fn main() {
     .unwrap();
 }
 
-fn sink_to_file<G, D, R>(
-    file: Arc<Mutex<File>>,
-    stream: &differential_dataflow::Collection<G, D, R>,
+fn sink_to_file<T, G, D, R>(
+    name: &str,
+    collection: &differential_dataflow::Collection<G, D, R>,
 ) where
-    G: timely::dataflow::scopes::Scope,
+    T: std::fmt::Debug,
+    G: timely::dataflow::scopes::Scope<Timestamp=T>,
     D: timely::Data + std::fmt::Debug,
     R: differential_dataflow::difference::Semigroup,
+    (D, T, R): timely::ExchangeData,
 {
-    stream.inspect(move |t| {
-        let mut file = file.lock().unwrap();
+    let mut file = File::create(&format!("./tmp/{}", name)).unwrap();
+    collection
+    .inner
+    // move everything to worker 0
+    .exchange(|_| 0)
+    .inspect(move |t| {
         write!(&mut file, "{:?}\n", t).unwrap();
-        file.flush().unwrap();
     });
 }
