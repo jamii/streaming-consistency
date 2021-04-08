@@ -8,7 +8,7 @@ max_id = 1000000
 transactions = []
 for id in range(0,max_id):
     second = ((60 * id) // max_id)
-    delay = random.randint(0,10)
+    delay = random.uniform(0, 10)
     row = json.dumps({
         'id': id,
         'from_account': random.randint(0,9),
