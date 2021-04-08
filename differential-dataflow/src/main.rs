@@ -1,7 +1,6 @@
 use chrono::{Duration, NaiveDateTime};
 use differential_dataflow::input::InputSession;
 use differential_dataflow::operators::*;
-use ordered_float::OrderedFloat;
 use serde_json::Value;
 use std::fs::File;
 use std::io::prelude::*;
@@ -13,7 +12,10 @@ struct Transaction {
     id: i64,
     from_account: i64,
     to_account: i64,
-    amount: OrderedFloat<f64>,
+    // This diff diffdoes not impl Ord
+    // and Orddiff does not impl Abomonate or Serialize
+    // and orphan rules prevent us from fixing this without writing our own float wrapper
+    amount: i64,
     ts: NaiveDateTime,
 }
 
@@ -33,49 +35,46 @@ fn main() {
             let transactions = transactions.to_collection(scope);
             sink_to_file(accepted_transactions_file.clone(), &transactions);
 
-            // TODO be_bytes nonsense is to get around f64 not impl-ing ExchangeData
-
             let debits = transactions
-                .map(|t| (t.from_account, t.amount.into_inner().to_be_bytes()))
+                .map(|t| (t.from_account, t.amount))
                 .reduce(|_account, inputs, output| {
-                    let mut amount = 0.0;
+                    let mut amount = 0;
                     for (sub_amount, diff) in inputs {
-                        amount += f64::from_be_bytes(**sub_amount) * (*diff as f64);
+                        amount += **sub_amount * (*diff as i64);
                     }
-                    output.push((OrderedFloat(amount), 1));
+                    output.push((amount, 1));
                 });
             sink_to_file(debits_file.clone(), &debits);
 
             let credits = transactions
-                .map(|t| (t.to_account, t.amount.into_inner().to_be_bytes()))
+                .map(|t| (t.to_account, t.amount))
                 .reduce(|_account, inputs, output| {
-                    let mut amount = 0.0;
+                    let mut amount = 0;
                     for (sub_amount, diff) in inputs {
-                        amount += f64::from_be_bytes(**sub_amount) * (*diff as f64);
+                        amount += **sub_amount * (*diff as i64);
                     }
-                    output.push((OrderedFloat(amount), 1));
+                    output.push((amount, 1));
                 });
             sink_to_file(credits_file.clone(), &credits);
 
             let balance = debits
-                .map(|(a, d)| (a, d.into_inner().to_be_bytes()))
-                .join(&credits.map(|(a, c)| (a, c.into_inner().to_be_bytes())))
+                .join(&credits)
                 .map(|(account, (credits, debits))| {
                     (
                         account,
-                        OrderedFloat(f64::from_be_bytes(credits) - f64::from_be_bytes(debits)),
+                        credits - debits,
                     )
                 });
             sink_to_file(balance_file.clone(), &balance);
 
             let total = balance
-                .map(|(_account, balance)| ((), balance.to_be_bytes()))
+                .map(|(_account, balance)| ((), balance))
                 .reduce(|_, inputs, output| {
-                    let mut total = 0.0;
+                    let mut total = 0;
                     for (balance, diff) in inputs {
-                        total += f64::from_be_bytes(**balance) * (*diff as f64);
+                        total += **balance * (*diff as i64);
                     }
-                    output.push((OrderedFloat(total), 1));
+                    output.push((total, 1));
                 });
             sink_to_file(total_file.clone(), &total);
         });
@@ -90,7 +89,7 @@ fn main() {
                     id: json["id"].as_i64().unwrap(),
                     from_account: json["from_account"].as_i64().unwrap(),
                     to_account: json["to_account"].as_i64().unwrap(),
-                    amount: OrderedFloat(json["amount"].as_f64().unwrap()),
+                    amount: json["amount"].as_i64().unwrap(),
                     ts: NaiveDateTime::parse_from_str(
                         json["ts"].as_str().unwrap(),
                         "%Y-%m-%d %H:%M:%S%.f",

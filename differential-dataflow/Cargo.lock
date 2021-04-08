@@ -81,10 +81,8 @@ dependencies = [
 name = "differential-dataflow-demo"
 version = "0.1.0"
 dependencies = [
- "abomonation_derive",
  "chrono",
  "differential-dataflow",
- "ordered-float",
  "serde_json",
  "timely",
 ]
@@ -179,15 +177,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "ordered-float"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "766f840da25490628d8e63e529cd21c014f6600c6b8517add12a6fa6167a6218"
-dependencies = [
- "num-traits",
 ]
 
 [[package]]
