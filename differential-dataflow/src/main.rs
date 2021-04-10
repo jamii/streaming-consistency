@@ -61,7 +61,7 @@ fn main() {
             if worker_index == 0 {
                 let mut watermark = 0;
                 let transactions_file = File::open("./tmp/transactions").unwrap();
-                for line in BufReader::new(transactions_file).lines() {
+                for (i, line) in BufReader::new(transactions_file).lines().enumerate() {
                     let line = line.unwrap();
                     let json: Value = serde_json::from_str(&line).unwrap();
                     let transaction = Transaction {
@@ -83,10 +83,15 @@ fn main() {
                         transactions.update_at(transaction, transaction.ts as isize, 1);
                     }
                     transactions.advance_to(watermark as isize);
-                    // 1 transaction per batch - slow but maximum opportunity for bugs
-                    transactions.flush();
-                    worker.step();
+                    // 1000 transactions per batch
+                    if i % 1000 == 0 {
+                        transactions.flush();
+                        worker.step();
+                    }
                 }
+                // flush any remaining records
+                transactions.flush();
+                worker.step();
             }
         }
     })
