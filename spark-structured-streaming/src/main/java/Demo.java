@@ -11,6 +11,7 @@ public class Demo {
         .format("kafka")
         .option("kafka.bootstrap.servers", "localhost:9092")
         .option("subscribe", "transactions")
+        .option("startingOffsets", "earliest")
         .load();
         
         df
