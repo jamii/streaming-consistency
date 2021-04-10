@@ -8,6 +8,7 @@ pkgs.mkShell {
     buildInputs = [
         pkgs.maven
         pkgs.jre8
+        pkgs.apacheKafka
         pkgs.spark
         
         pkgs.python38
