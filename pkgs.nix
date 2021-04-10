@@ -47,6 +47,17 @@ import (builtins.fetchTarball {
             '';
         });
         
+        # override spark to v3.1.1
+        spark = super.spark.overrideAttrs (oldAttrs: rec {
+            version = "3.1.1";
+            buildInputs = oldAttrs.buildInputs ++ [ super.procps super.nettools ];
+            src = super.fetchzip {
+                url    = "mirror://apache/spark/spark-${version}/spark-${version}-bin-without-hadoop.tgz";
+                sha256 = "1l6jwf79wc1wbr8h1fgggd9fmn173bmj6lkjmn0m6a4xd7nk6pv7";
+            };
+        });
+        
+        # download materialized v0.7.1
         materialized = super.stdenv.mkDerivation {
             name = "materialized";
             src = fetchTarball {
