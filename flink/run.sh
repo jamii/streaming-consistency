@@ -83,14 +83,6 @@ create_topic() {
         --topic "$1"
 }
 create_topic transactions
-create_topic accepted_transactions
-create_topic outer_join_with_time
-create_topic outer_join_without_time
-create_topic credits
-create_topic debits
-create_topic balance
-create_topic total
-create_topic total2
 
 echo "Starting flink"
 $FLINK_DIR/bin/start-cluster.sh
@@ -103,27 +95,7 @@ echo "Feeding inputs"
 ../transactions.py | cut -d'|' -f2 > $DATA_DIR/transactions
 
 echo "Starting demo"
-flink run --detached -Dexecution.runtime-mode=BATCH ./target/demo-1.0.0.jar
-   
-echo "Watching outputs"
-watch_topic() { 
-    kafka-console-consumer.sh \
-        --bootstrap-server localhost:9092 \
-        --topic "$1" \
-        --from-beginning \
-        --formatter kafka.tools.DefaultMessageFormatter \
-        --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
-        --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
-        > "./tmp/$1" &
-}
-watch_topic accepted_transactions
-watch_topic outer_join_with_time
-watch_topic outer_join_without_time
-watch_topic credits
-watch_topic debits
-watch_topic balance
-watch_topic total
-watch_topic total2
+flink run --detached ./target/demo-1.0.0.jar
     
 echo "All systems go. Hit ctrl-c when you're ready to shut everything down."
 read -r -d '' _

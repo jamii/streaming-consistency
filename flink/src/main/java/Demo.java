@@ -19,9 +19,8 @@ import org.apache.flink.api.common.serialization.*;
 public class Demo {
 
     public static void main(String[] args) throws Exception {
-        EnvironmentSettings settings = EnvironmentSettings.newInstance().useBlinkPlanner().inStreamingMode().build();
-        StreamExecutionEnvironment sEnv = StreamExecutionEnvironment.getExecutionEnvironment();
-        StreamTableEnvironment tEnv = StreamTableEnvironment.create(sEnv, settings);
+        EnvironmentSettings settings = EnvironmentSettings.newInstance().useBlinkPlanner().inBatchMode().build();
+        TableEnvironment tEnv = TableEnvironment.create(settings);
 
         tEnv.executeSql(String.join("\n",
             "CREATE TABLE transactions (",
@@ -47,7 +46,6 @@ public class Demo {
             "FROM",
             "    transactions"
         ));
-        sinkToKafka(tEnv, "accepted_transactions");
         
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW outer_join_with_time(id, other_id) AS",
@@ -60,7 +58,8 @@ public class Demo {
             "ON",
             "    t1.id = t2.id AND t1.ts = t2.ts"
         ));
-        sinkToKafka(tEnv, "outer_join_with_time");
+        tEnv.executeSql("CREATE TEMPORARY TABLE outer_join_with_time_sink(id BIGINT, other_id BIGINT) WITH ( 'connector' = 'filesystem', 'path' = '/home/jamie/streaming-consistency/flink/tmp/outer_join_with_time', 'format' = 'json' )");
+        tEnv.sqlQuery("SELECT * FROM outer_join_with_time").executeInsert("outer_join_with_time_sink");
         
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW outer_join_without_time(id, other_id) AS",
@@ -73,7 +72,8 @@ public class Demo {
             "ON",
             "    t1.id = t2.id"
         ));
-        sinkToKafka(tEnv, "outer_join_without_time");
+        tEnv.executeSql("CREATE TEMPORARY TABLE outer_join_without_time_sink(id BIGINT, other_id BIGINT) WITH ( 'connector' = 'filesystem', 'path' = '/home/jamie/streaming-consistency/flink/tmp/outer_join_without_time', 'format' = 'json' )");
+        tEnv.sqlQuery("SELECT * FROM outer_join_without_time").executeInsert("outer_join_without_time_sink");
         
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW credits(account, credits) AS",
@@ -84,7 +84,6 @@ public class Demo {
             "GROUP BY",
             "    to_account"
         ));  
-        sinkToKafka(tEnv, "credits");
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW debits(account, debits) AS",
             "SELECT",
@@ -94,7 +93,6 @@ public class Demo {
             "GROUP BY",
             "    from_account"
         ));
-        sinkToKafka(tEnv, "debits");
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW balance(account, balance) AS",
             "SELECT",
@@ -104,7 +102,6 @@ public class Demo {
             "WHERE",
             "    credits.account = debits.account"
         ));
-        sinkToKafka(tEnv, "balance");
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW total(total) AS",
             "SELECT",
@@ -112,7 +109,8 @@ public class Demo {
             "FROM",
             "    balance"
         ));
-        sinkToKafka(tEnv, "total");
+        tEnv.executeSql("CREATE TEMPORARY TABLE total_sink(total DOUBLE) WITH ( 'connector' = 'filesystem', 'path' = '/home/jamie/streaming-consistency/flink/tmp/total', 'format' = 'json' )");
+        tEnv.sqlQuery("SELECT * FROM total").executeInsert("total_sink");
         
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW credits2(account, credits, ts) AS",
@@ -148,26 +146,9 @@ public class Demo {
             "FROM",
             "    balance2"
         ));
-        sinkToKafka(tEnv, "total2");
+        tEnv.executeSql("CREATE TEMPORARY TABLE total2_sink(total DOUBLE) WITH ( 'connector' = 'filesystem', 'path' = '/home/jamie/streaming-consistency/flink/tmp/total2', 'format' = 'json' )");
+        tEnv.sqlQuery("SELECT * FROM total2").executeInsert("total2_sink");
         
-        sEnv.execute("Demo");
-    }
-    
-    public static void sinkToKafka(StreamTableEnvironment tEnv, String name) {
-        Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", "localhost:9092");
-        FlinkKafkaProducer<String> sink = new FlinkKafkaProducer<String>(
-            name,                  
-            new SimpleStringSchema(),  
-            properties
-        ); 
-        tEnv
-        .toRetractStream(tEnv.from(name), Row.class)
-        .map(kv -> 
-            (kv.getField(0) ? "insert" : "delete")
-            + " "
-            + kv.getField(1).toString()
-        )
-        .addSink(sink);
+        // tEnv.execute("Demo");
     }
 }
