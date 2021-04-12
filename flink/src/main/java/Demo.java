@@ -141,7 +141,6 @@ public class Demo {
             "WHERE",
             "    credits2.account = debits2.account AND credits2.ts = debits2.ts"
         ));
-        sinkToKafka(tEnv, "balance");
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW total2(total) AS",
             "SELECT",
