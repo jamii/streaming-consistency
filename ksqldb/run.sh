@@ -56,12 +56,14 @@ watch_topic() {
         --from-beginning \
         --formatter kafka.tools.DefaultMessageFormatter \
         --property print.timestamp=true \
+        --property print.key=true \
         --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
         --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer \
         > "./tmp/$1" &
 }
 watch_topic transactions
 watch_topic accepted_transactions
+watch_topic outer_join
 watch_topic credits
 watch_topic debits
 watch_topic balance

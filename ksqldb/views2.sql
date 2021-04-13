@@ -9,6 +9,22 @@ FROM
     transactions
 EMIT CHANGES;
 
+CREATE TABLE outer_join WITH (
+    kafka_topic='outer_join',
+    value_format='json',
+    partitions=1
+) AS
+SELECT
+    t1.id,
+    t2.id as other_id,
+FROM
+    transactions as t1
+LEFT JOIN
+    transactions as t2
+ON
+    t1.id = t2.id
+EMIT CHANGES;
+
 CREATE TABLE credits WITH (
     kafka_topic='credits',
     value_format='json',
