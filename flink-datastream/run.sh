@@ -80,6 +80,7 @@ create_topic() {
         --bootstrap-server localhost:9092 \
         --replication-factor 1 \
         --partitions 1 \
+        --config retention.ms=-1 \
         --topic "$1"
 }
 create_topic transactions
