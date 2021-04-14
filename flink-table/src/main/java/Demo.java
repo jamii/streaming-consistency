@@ -125,6 +125,7 @@ public class Demo {
             "GROUP BY",
             "    to_account"
         ));  
+        sinkToKafka(tEnv, "credits2");
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW debits2(account, debits, ts) AS",
             "SELECT",
@@ -134,6 +135,7 @@ public class Demo {
             "GROUP BY",
             "    from_account"
         ));
+        sinkToKafka(tEnv, "debits2");
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW balance2(account, balance, ts) AS",
             "SELECT",
@@ -143,6 +145,7 @@ public class Demo {
             "WHERE",
             "    credits2.account = debits2.account AND credits2.ts = debits2.ts"
         ));
+        sinkToKafka(tEnv, "balance2");
         tEnv.executeSql(String.join("\n",
             "CREATE VIEW total2(total) AS",
             "SELECT",

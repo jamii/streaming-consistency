@@ -16,11 +16,11 @@ CREATE TABLE outer_join WITH (
 ) AS
 SELECT
     t1.id,
-    t2.id as other_id,
+    t2.id as other_id
 FROM
     transactions as t1
 LEFT JOIN
-    transactions as t2
+    accepted_transactions as t2
 ON
     t1.id = t2.id
 EMIT CHANGES;
