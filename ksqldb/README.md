@@ -1,7 +1,7 @@
 Linux-only. Requires docker and python3.8.
 
 ```
-./run.sh
+./run.sh ../original-transactions.py
 ```
 
 You should eventually see something like this:

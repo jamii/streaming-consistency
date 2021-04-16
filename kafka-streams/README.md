@@ -1,9 +1,7 @@
 Linux-only. Requires [nix](https://nixos.org/) to fetch dependencies.
 
 ```
-sudo mkdir /sys/fs/cgroup/cpu/jamii-consistency-demo
-sudo chown -R $USER /sys/fs/cgroup/cpu/jamii-consistency-demo
-nix-shell --pure --run ./run.sh
+nix-shell --pure --command './run.sh ../original-transactions.py'
 ```
 
 You should eventually see something like this:

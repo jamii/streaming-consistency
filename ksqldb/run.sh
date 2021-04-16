@@ -2,6 +2,8 @@
 
 set -ue
 
+DATAGEN=$1
+
 # cleanup processes on exit
 cleanup() {
     echo "Cleaning up"
@@ -70,7 +72,7 @@ watch_topic balance
 watch_topic total
 
 echo "Feeding inputs"
-../transactions.py | docker-compose exec -T broker kafka-console-producer \
+$DATAGEN | docker-compose exec -T broker kafka-console-producer \
     --broker-list localhost:29092 \
     --topic transactions \
     --property "key.separator=|" \

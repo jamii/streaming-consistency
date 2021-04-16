@@ -2,20 +2,7 @@
 
 set -ue
 
-# cleanup processes on exit
-echo $$ > /sys/fs/cgroup/cpu/jamii-consistency-demo/tasks
-cleanup() {
-    echo "Cleaning up"
-    for pid in $(< /sys/fs/cgroup/cpu/jamii-consistency-demo/tasks) 
-    do
-        if [ $pid -ne $$ ]
-        then
-            kill -9 $pid 2> /dev/null || true
-        fi
-    done
-    echo "Done"
-}
-trap cleanup EXIT
+DATAGEN=$1
 
 THIS_DIR="$(cd "$(dirname "$0")"; pwd -P)"
 
@@ -93,7 +80,7 @@ echo "Running streams (check $DATA_DIR/logs/streams)"
 java -cp target/demo-1.0-SNAPSHOT-jar-with-dependencies.jar net.scattered_thoughts.streaming_consistency.Demo >$DATA_DIR/logs/streams &
 
 echo "Feeding inputs"
-../transactions.py | kafka-console-producer.sh \
+$DATAGEN | kafka-console-producer.sh \
     --broker-list localhost:9092 \
     --topic transactions \
     --property "key.separator=|" \

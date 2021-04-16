@@ -2,20 +2,7 @@
 
 set -ue
 
-# cleanup processes on exit
-echo $$ > /sys/fs/cgroup/cpu/jamii-consistency-demo/tasks
-cleanup() {
-    echo "Cleaning up"
-    for pid in $(< /sys/fs/cgroup/cpu/jamii-consistency-demo/tasks) 
-    do
-        if [ $pid -ne $$ ]
-        then
-            kill -9 $pid 2> /dev/null || true
-        fi
-    done
-    echo "Done"
-}
-trap cleanup EXIT
+DATAGEN=$1
 
 THIS_DIR="$(cd "$(dirname "$0")"; pwd -P)"
 
@@ -55,7 +42,7 @@ materialized \
 wait_for_port "materialized" 6875
 
 echo "Feeding inputs"
-../transactions.py | cut -d'|' -f2 >> $DATA_DIR/transactions
+$DATAGEN | cut -d'|' -f2 >> $DATA_DIR/transactions
 
 echo "Creating views"
 touch "$DATA_DIR/transactions"

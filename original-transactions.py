@@ -4,7 +4,7 @@ import random
 import json
 
 random.seed(42)
-max_id = 1000000
+max_id = 10000000
 transactions = []
 for id in range(0,max_id):
     second = ((60 * id) // max_id)
