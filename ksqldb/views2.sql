@@ -1,8 +1,6 @@
 CREATE TABLE accepted_transactions WITH (
     kafka_topic='accepted_transactions',
-    value_format='json',
-    partitions=1
-) AS
+    value_format='json') AS
 SELECT
     *
 FROM
@@ -11,9 +9,7 @@ EMIT CHANGES;
 
 CREATE TABLE outer_join WITH (
     kafka_topic='outer_join',
-    value_format='json',
-    partitions=1
-) AS
+    value_format='json') AS
 SELECT
     t1.id,
     t2.id as other_id
@@ -27,9 +23,7 @@ EMIT CHANGES;
 
 CREATE TABLE credits WITH (
     kafka_topic='credits',
-    value_format='json',
-    partitions=1
-) AS
+    value_format='json') AS
 SELECT
     to_account AS account, 
     sum(amount) AS credits
@@ -41,9 +35,7 @@ EMIT CHANGES;
 
 CREATE TABLE debits WITH (
     kafka_topic='debits',
-    value_format='json',
-    partitions=1
-) AS
+    value_format='json') AS
 SELECT
     from_account AS account, 
     sum(amount) AS debits
@@ -55,9 +47,7 @@ EMIT CHANGES;
 
 CREATE TABLE balance WITH (
     kafka_topic='balance',
-    value_format='json',
-    partitions=1
-) AS
+    value_format='json') AS
 SELECT
     credits.account AS account, 
     credits - debits AS balance
@@ -71,9 +61,7 @@ EMIT CHANGES;
 
 CREATE TABLE total WITH (
     kafka_topic='total',
-    value_format='json',
-    partitions=1
-) AS
+    value_format='json') AS
 SELECT
     'foo',
     sum(balance)

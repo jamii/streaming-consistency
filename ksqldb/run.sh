@@ -48,6 +48,22 @@ wait_for_port zookeeper 2181
 wait_for_port kafka 29092
 wait_for_port ksqldb 8088
 
+echo "Creating topics"
+create_topic() {
+    COMPOSE_INTERACTIVE_NO_CLI=1 docker-compose exec -T broker kafka-topics --create \
+        --bootstrap-server localhost:9092 \
+        --replication-factor 1 \
+        --partitions 1 \
+        --config retention.ms=-1 \
+        --topic "$1"
+}
+create_topic transactions
+create_topic accepted_transactions
+create_topic outer_join
+create_topic sums
+create_topic balance
+create_topic total
+
 echo "Waiting until ksqldb is ready for commands"
 while ! $(docker-compose exec -T ksqldb-cli ksql http://ksqldb-server:8088 -e 'show topics;' 2> /dev/null | grep -q "default_ksql_processing_log") 
 do
