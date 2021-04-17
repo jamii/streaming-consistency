@@ -19,6 +19,12 @@ echo "Data will be stored in $DATA_DIR"
 rm -rf $DATA_DIR/*
 mkdir -p $DATA_DIR/{config,logs}
 
+check_port_is_available() {
+    local name="$1"
+    local port="$2"
+    true &>/dev/null </dev/tcp/127.0.0.1/$port && echo "Something (probably $name) is already running on port $port. Please kill it and try again." && exit 1 || echo "$port is available for $name"
+}
+
 wait_for_port() {
     local name="$1"
     local port="$2"
@@ -30,6 +36,11 @@ wait_for_port() {
     done
     echo
 }
+
+echo "Checking ports"
+check_port_is_available "Zookeeper" 2181
+check_port_is_available "Kafka" 29092
+check_port_is_available "Ksqldb" 8088
 
 echo "Starting ksqldb and co"
 docker-compose up > $DATA_DIR/logs/ksqldb 2>&1 &
