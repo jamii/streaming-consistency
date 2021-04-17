@@ -7,9 +7,9 @@ raw_totals <- fread('ksqldb-original-total', header=FALSE)
 totals <- data.frame(setNames(raw_totals, c('total')))
 totals$input <- seq(1:nrow(totals))
 ggplot(totals, aes(x = input, y = total)) +
-  geom_jitter(shape = '.', height = 1, alpha = 1) +
+  geom_jitter(shape = 'x', height = 1, alpha = 1) +
   ylab('total') +
-  xlab('output #') +     
+  xlab('output #') +
   theme_bw()
 ggsave('ksqldb-original-timeseries.png')
 
@@ -17,7 +17,7 @@ raw_totals <- fread('ksqldb-simplified-total', header=FALSE)
 totals <- data.frame(setNames(raw_totals, c('total')))
 totals$input <- seq(1:nrow(totals))
 ggplot(totals, aes(x = input, y = total)) +
-  geom_jitter(shape = '.', height = 1, alpha = 1) +
+  geom_jitter(shape = 'x', height = 1, alpha = 1) +
   ylab('total') +
   xlab('output #') +     
   theme_bw()
