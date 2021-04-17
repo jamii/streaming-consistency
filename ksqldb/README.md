@@ -1,4 +1,4 @@
-Linux-only. Requires docker and python3.8.
+Linux-only. Requires docker-compose and python3.8.
 
 ```
 ./run.sh ../original-transactions.py
