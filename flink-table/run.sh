@@ -78,6 +78,9 @@ create_topic credits
 create_topic debits
 create_topic balance
 create_topic total
+create_topic credits2
+create_topic debits2
+create_topic balance2
 create_topic total2
 
 echo "Starting flink"
@@ -117,6 +120,9 @@ watch_topic credits
 watch_topic debits
 watch_topic balance
 watch_topic total
+watch_topic credits2
+watch_topic debits2
+watch_topic balance2
 watch_topic total2
     
 echo "All systems go. Hit ctrl-c when you're ready to shut everything down."
