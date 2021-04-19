@@ -50,7 +50,7 @@ public class TransactionsSource implements SourceFunction<JsonNode> {
 
             // generate watermark
             if (numEvents == watermarkFrequency) {
-                Watermark nextWatermark = new Watermark(timestamp - 10000);
+                Watermark nextWatermark = new Watermark(timestamp - 5000);
                 sourceContext.emitWatermark(nextWatermark);
                 numEvents = 0;
             }
