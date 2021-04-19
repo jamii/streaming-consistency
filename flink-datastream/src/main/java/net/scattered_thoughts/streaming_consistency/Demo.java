@@ -19,7 +19,7 @@ public class Demo {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
         DataStream<JsonNode> transactions = env
-                .addSource(new TransactionsSource("/path/to/your/transaction/data", 100));
+                .addSource(new TransactionsSource("./tmp/transactions", 100));
 
         // timestamp - from_account - amount_total
         DataStream<Tuple3<Long, Long, Double>> debits =
@@ -28,7 +28,7 @@ public class Demo {
                         .keyBy(new GetAccount())
                         .process(new ProcessTransaction());
 
-        debits.writeAsText("/debits.out").setParallelism(1);
+        debits.writeAsText("./tmp/debits").setParallelism(1);
 
         // timestamp - to_account - amount_total
         DataStream<Tuple3<Long, Long, Double>> credits =
@@ -37,7 +37,7 @@ public class Demo {
                         .keyBy(new GetAccount())
                         .process(new ProcessTransaction());
 
-        debits.writeAsText("credits.out").setParallelism(1);
+        debits.writeAsText("./tmp/credits").setParallelism(1);
 
         // timestamp - account - balance
         DataStream<Tuple3<Long, Long, Double>> balance =
@@ -47,14 +47,14 @@ public class Demo {
                         .keyBy(new GetAccount())
                         .process(new ProcessTransaction());
 
-        balance.writeAsText("balance.out").setParallelism(1);
+        balance.writeAsText("./tmp/balance").setParallelism(1);
 
         DataStream<Tuple3<Long, Long, Double>> total =
                 balance
                         .keyBy(new GetOneKey())
                         .process(new ProcessTotal()).setParallelism(1);
 
-        total.writeAsText("total.out").setParallelism(1);
+        total.writeAsText("./tmp/total").setParallelism(1);
 
         env.execute("Demo");
     }

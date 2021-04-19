@@ -71,14 +71,6 @@ create_topic() {
         --topic "$1"
 }
 create_topic transactions
-create_topic accepted_transactions
-create_topic outer_join_with_time
-create_topic outer_join_without_time
-create_topic credits
-create_topic debits
-create_topic balance
-create_topic total
-create_topic total2
 
 echo "Starting flink"
 $FLINK_DIR/bin/start-cluster.sh
@@ -110,14 +102,6 @@ watch_topic() {
         > "./tmp/$1" &
 }
 watch_topic transactions
-watch_topic accepted_transactions
-watch_topic outer_join_with_time
-watch_topic outer_join_without_time
-watch_topic credits
-watch_topic debits
-watch_topic balance
-watch_topic total
-watch_topic total2
     
 echo "All systems go. Hit ctrl-c when you're ready to shut everything down."
 read -r -d '' _
