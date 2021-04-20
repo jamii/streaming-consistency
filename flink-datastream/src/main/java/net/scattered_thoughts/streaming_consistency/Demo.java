@@ -37,7 +37,7 @@ public class Demo {
                         .keyBy(new GetAccount())
                         .process(new ProcessTransaction());
 
-        debits.writeAsText("./tmp/credits").setParallelism(1);
+        credits.writeAsText("./tmp/credits").setParallelism(1);
 
         // timestamp - account - balance
         DataStream<Tuple3<Long, Long, Double>> balance =
